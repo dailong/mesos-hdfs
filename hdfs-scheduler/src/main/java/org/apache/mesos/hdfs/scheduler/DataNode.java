@@ -17,8 +17,6 @@ import java.util.List;
  */
 public class DataNode extends HdfsNode {
   private final Log log = LogFactory.getLog(DataNode.class);
-  private List<String> taskTypes = Arrays.asList(HDFSConstants.DATA_NODE_ID);
-  private String executorName = HDFSConstants.NODE_EXECUTOR_ID;
 
   public DataNode(LiveState liveState, IPersistentStateStore persistentStore, HdfsFrameworkConfig config) {
     super(liveState, persistentStore, config, HDFSConstants.DATA_NODE_ID);
@@ -50,7 +48,11 @@ public class DataNode extends HdfsNode {
     return accept;
   }
 
-  public void launch(SchedulerDriver driver, Offer offer) {
-    launch(driver, offer, name, taskTypes, executorName);
+  protected String getExecutorName() {
+    return HDFSConstants.NODE_EXECUTOR_ID;
+  }
+
+  protected List<String> getTaskTypes() {
+    return Arrays.asList(HDFSConstants.DATA_NODE_ID);
   }
 }
