@@ -75,8 +75,32 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
   @Override
   public void error(SchedulerDriver driver, String message) {
     log.error("Scheduler driver error: " + message);
+	// Currently, it's pretty hard to disambiguate this error from other causes of framework errors.
+    // Watch MESOS-2522 which will add a reason field for framework errors to help with this.
+    // For now the frameworkId is removed for all messages.
+    boolean removeFrameworkId = message.contains("re-register");
+    suicide(removeFrameworkId);
   }
-
+    
+  /**
+    * Exits the JVM process, optionally deleting Marathon's FrameworkID
+    * from the backing persistence store.
+    *
+    * If `removeFrameworkId` is set, the next Marathon process elected
+    * leader will fail to find a stored FrameworkID and invoke `register`
+    * instead of `reregister`.  This is important because on certain kinds
+    * of framework errors (such as exceeding the framework failover timeout),
+    * the scheduler may never re-register with the saved FrameworkID until
+    * the leading Mesos master process is killed.
+    */
+  private void suicide(Boolean removeFrameworkId)  {
+    if (removeFrameworkId) 
+    {
+        persistenceStore.setFrameworkId(null);
+        System.exit(9);
+    }
+  }
+  
   @Override
   public void executorLost(SchedulerDriver driver, ExecutorID executorID, SlaveID slaveID,
     int status) {
@@ -473,7 +497,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
   private boolean tryToLaunchJournalNode(SchedulerDriver driver, Offer offer) {
     if (offerNotEnoughResources(offer, hdfsFrameworkConfig.getJournalNodeCpus(),
       hdfsFrameworkConfig.getJournalNodeHeapSize())) {
-      log.info("Offer does not have enough resources");
+      log.info("journal offer does not have enough resources");
       return false;
     }
 
@@ -511,7 +535,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
     if (offerNotEnoughResources(offer,
       (hdfsFrameworkConfig.getNameNodeCpus() + hdfsFrameworkConfig.getZkfcCpus()),
       (hdfsFrameworkConfig.getNameNodeHeapSize() + hdfsFrameworkConfig.getZkfcHeapSize()))) {
-      log.info("Offer does not have enough resources");
+      log.info("namenode offer does not have enough resources.");
       return false;
     }
 
@@ -548,7 +572,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
   private boolean tryToLaunchDataNode(SchedulerDriver driver, Offer offer) {
     if (offerNotEnoughResources(offer, hdfsFrameworkConfig.getDataNodeCpus(),
       hdfsFrameworkConfig.getDataNodeHeapSize())) {
-      log.info("Offer does not have enough resources");
+      log.info("datanode offer does not have enough resources");
       return false;
     }
 
