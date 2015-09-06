@@ -37,16 +37,13 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Observable;
 
 /**
  * HDFS Mesos Framework Scheduler class implementation.
  */
-public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
+public class HdfsScheduler extends Observable implements org.apache.mesos.Scheduler, Runnable {
   // TODO (elingg) remove as much logic as possible from Scheduler to clean up code
   private final Log log = LogFactory.getLog(HdfsScheduler.class);
 
@@ -56,6 +53,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
   private final LiveState liveState;
   private final IPersistentStateStore persistenceStore;
   private final DnsResolver dnsResolver;
+  private final Reconciler reconciler;
 
   @Inject
   public HdfsScheduler(HdfsFrameworkConfig hdfsFrameworkConfig,
@@ -65,6 +63,9 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
     this.liveState = liveState;
     this.persistenceStore = persistenceStore;
     this.dnsResolver = new DnsResolver(this, hdfsFrameworkConfig);
+    this.reconciler = new Reconciler(hdfsFrameworkConfig, persistenceStore);
+
+    addObserver(reconciler);
   }
 
   @Override
@@ -131,17 +132,16 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
       throw new SchedulerException(msg, e);
     }
     log.info("Registered framework frameworkId=" + frameworkId.getValue());
-    // reconcile tasks upon registration
-    reconcileTasks(driver);
+    reconcile(driver);
   }
 
   @Override
   public void reregistered(SchedulerDriver driver, MasterInfo masterInfo) {
     log.info("Reregistered framework: starting task reconciliation");
-    // reconcile tasks upon reregistration
-    reconcileTasks(driver);
+    reconcile(driver);
   }
 
+  
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     log.info(String.format(
@@ -150,6 +150,10 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
       status.getState().toString(),
       status.getMessage(),
       liveState.getStagingTasksSize()));
+
+    log.info("Notifying observers");
+    setChanged();
+    notifyObservers(status);
 
     if (!isStagingState(status)) {
       liveState.removeStagingTask(status.getTaskId());
@@ -222,6 +226,10 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
   @Override
   public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
     log.info(String.format("Received %d offers", offers.size()));
+
+    if (liveState.getCurrentAcquisitionPhase() == AcquisitionPhase.RECONCILING_TASKS && reconciler.complete()) {
+      correctCurrentPhase();
+    }
 
     // TODO (elingg) within each phase, accept offers based on the number of nodes you need
     boolean acceptedOffer = false;
@@ -334,8 +342,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
       taskTypes.toString()));
     String taskIdName = String.format("%s.%s.%d", nodeName, executorName,
       System.currentTimeMillis());
-    List<Resource> resources = getExecutorResources();
-    ExecutorInfo executorInfo = createExecutor(taskIdName, nodeName, executorName, resources);
+    ExecutorInfo executorInfo = createExecutor(taskIdName, nodeName, executorName);
     List<TaskInfo> tasks = new ArrayList<>();
     for (String taskType : taskTypes) {
       List<Resource> taskResources = getTaskResources(taskType);
@@ -390,8 +397,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
     return taskType;
   }
 
-  private ExecutorInfo createExecutor(String taskIdName, String nodeName, String executorName,
-    List<Resource> resources) {
+  private ExecutorInfo createExecutor(String taskIdName, String nodeName, String executorName) {
     int confServerPort = hdfsFrameworkConfig.getConfigServerPort();
 
     String cmd = "export JAVA_HOME=$MESOS_DIRECTORY/" + hdfsFrameworkConfig.getJreVersion()
@@ -406,7 +412,7 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
       .newBuilder()
       .setName(nodeName + " executor")
       .setExecutorId(ExecutorID.newBuilder().setValue("executor." + taskIdName).build())
-      .addAllResources(resources)
+      .addAllResources(getExecutorResources())
       .setCommand(
         CommandInfo
           .newBuilder()
@@ -671,36 +677,8 @@ public class HdfsScheduler implements org.apache.mesos.Scheduler, Runnable {
     return false;
   }
 
-  private void reconcileTasks(SchedulerDriver driver) {
-    // TODO (elingg) run this method repeatedly with exponential backoff in the case that it takes
-    // time for
-    // different slaves to reregister upon master failover.
-    driver.reconcileTasks(Collections.<Protos.TaskStatus>emptyList());
-    Timer timer = new Timer();
-    timer.schedule(new ReconcileStateTask(), hdfsFrameworkConfig.getReconciliationTimeout() * SECONDS_FROM_MILLIS);
-  }
-
-  private class ReconcileStateTask extends TimerTask {
-
-    @Override
-    public void run() {
-      log.info("Current persistent state:");
-      log.info(String.format("JournalNodes: %s, %s", persistenceStore.getJournalNodes(),
-        persistenceStore.getJournalNodeTaskNames()));
-      log.info(String.format("NameNodes: %s, %s", persistenceStore.getNameNodes(),
-        persistenceStore.getNameNodeTaskNames()));
-      log.info(String.format("DataNodes: %s", persistenceStore.getDataNodes()));
-
-      Set<String> taskIds = persistenceStore.getAllTaskIds();
-      Set<String> runningTaskIds = liveState.getRunningTasks().keySet();
-
-      for (String taskId : taskIds) {
-        if (taskId != null && !runningTaskIds.contains(taskId)) {
-          log.info("Removing task id: " + taskId);
-          persistenceStore.removeTaskId(taskId);
-        }
-      }
-      correctCurrentPhase();
-    }
+  private void reconcile(SchedulerDriver driver) {
+    liveState.transitionTo(AcquisitionPhase.RECONCILING_TASKS);
+    reconciler.reconcile(driver);
   }
 }
