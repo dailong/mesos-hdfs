@@ -156,7 +156,7 @@
 
   <property>
     <name>dfs.client.read.shortcircuit</name>
-    <value>true</value>
+    <value>false</value>
   </property>
 
   <property>
