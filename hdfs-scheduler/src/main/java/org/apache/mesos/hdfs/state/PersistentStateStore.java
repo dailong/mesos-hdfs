@@ -156,8 +156,7 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     nameNodes.put(info.getHostname(), info);
     setNameNodes(nameNodes);
-    
-    
+        
     if(info.getNameTaskId() != null)
     {
         Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();

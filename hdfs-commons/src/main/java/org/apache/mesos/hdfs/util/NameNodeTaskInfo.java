@@ -91,16 +91,22 @@ public class NameNodeTaskInfo implements Serializable
             info.setNameTaskId(nameTaskId);
             info.setNameTaskName(nameTaskName);
         }
-        if(otherInstance.getZkfcTaskId() != null)
+        
+        if(otherInstance != null)
         {
-            info.setZkfcTaskId(otherInstance.getZkfcTaskId());
-            info.setZkfcTaskName(otherInstance.getZkfcTaskName());
+            if(otherInstance.getZkfcTaskId() != null)
+            {
+                info.setZkfcTaskId(otherInstance.getZkfcTaskId());
+                info.setZkfcTaskName(otherInstance.getZkfcTaskName());
+            }
+
+            if(otherInstance.getNameTaskId() != null)
+            {
+                info.setNameTaskId(otherInstance.getNameTaskId());
+                info.setNameTaskName(otherInstance.getNameTaskName());
+            }
         }
-        if(otherInstance.getNameTaskId() != null)
-        {
-            info.setNameTaskId(otherInstance.getNameTaskId());
-            info.setNameTaskName(otherInstance.getNameTaskName());
-        }
+        
         return info;
     }
         
