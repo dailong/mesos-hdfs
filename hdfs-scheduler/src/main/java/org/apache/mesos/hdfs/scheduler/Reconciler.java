@@ -13,6 +13,7 @@ import org.apache.mesos.SchedulerDriver;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
@@ -49,7 +50,7 @@ public class Reconciler implements Observer {
 
     implicitlyReconcileTasks(driver);
   }
-
+  
   public void update(Observable obs, Object obj) {
     TaskStatus status = (TaskStatus) obj;
 
@@ -73,17 +74,17 @@ public class Reconciler implements Observer {
       }
     }
   }
-
+  
   private boolean taskIsPending(String taskId) {
-    for (String t : pendingTasks) {
-      if(t == null) {
-         pendingTasks.remove(t);
-      } else if (t.equals(taskId)) {
-        return true;
-      }
-    }
-
-    return false;
+      for (Iterator<String> iterator = pendingTasks.iterator(); iterator.hasNext();) {
+          String t = iterator.next();
+          if(t == null)
+              iterator.remove();
+          else if (t.equals(taskId)) {
+            return true;
+          }          
+      }    
+      return false;
   }
 
   public boolean complete() {
