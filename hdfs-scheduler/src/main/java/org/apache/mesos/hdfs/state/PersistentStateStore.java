@@ -232,7 +232,7 @@ public class PersistentStateStore implements IPersistentStateStore {
       final Set<Map.Entry<String, NameNodeTaskInfo>> nameNodeEntries = nameNodes.entrySet();
       for (Map.Entry<String, NameNodeTaskInfo> nameNode : nameNodeEntries) {
         NameNodeTaskInfo nameNodeInfo = nameNode.getValue();
-        if (nameNodeInfo.isDead()) 
+        if (nameNodeInfo == null || nameNodeInfo.isDead()) 
         {
           deadNameHosts.add(nameNode.getKey());
         }
@@ -386,44 +386,44 @@ public class PersistentStateStore implements IPersistentStateStore {
     boolean nodesModified = false;
     
     Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
-    if (nameNodes.values().contains(taskId)) {
-      for (Map.Entry<String, NameNodeTaskInfo> entry : nameNodes.entrySet()) {
-        NameNodeTaskInfo value = entry.getValue();
-        if (value != null) 
-        {
-           boolean containsTaskId = false;
-           if(value.getNameTaskId() != null && value.getNameTaskId().equals(taskId))
-           {
-               containsTaskId = true;
-               value.setNameTaskId(null);
-               value.setNameTaskId(null);
-               
-               Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
-               nameNodeTaskNames.remove(taskId);
-               setNameNodeTaskNames(nameNodeTaskNames);
-           }
-           else if(value.getZkfcTaskId() != null && value.getZkfcTaskId().equals(taskId))
-           {
-               containsTaskId = true;
-               value.setZkfcTaskId(null);
-               value.setZkfcTaskName(null);
-               
-               Map<String, String> zkfcNodeTaskNames = getZkfcNodeTaskNames();
-               zkfcNodeTaskNames.remove(taskId);
-               setZkfcNodeTaskNames(zkfcNodeTaskNames);
-           }
-           if(containsTaskId)
-           {
-               if(value.isDead())
-                  nameNodes.put(entry.getKey(), null);
-               setNameNodes(nameNodes);
-               
-               deadNodeTracker.resetNameNodeTimeStamp();
-               nodesModified = true;
-           }
-        }
+    
+    for (Map.Entry<String, NameNodeTaskInfo> entry : nameNodes.entrySet()) {
+      NameNodeTaskInfo value = entry.getValue();
+      if (value != null) 
+      {
+         boolean containsTaskId = false;
+         if(value.getNameTaskId() != null && value.getNameTaskId().equals(taskId))
+         {
+             containsTaskId = true;
+             value.setNameTaskId(null);
+             value.setNameTaskId(null);
+
+             Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
+             nameNodeTaskNames.remove(taskId);
+             setNameNodeTaskNames(nameNodeTaskNames);
+         }
+         else if(value.getZkfcTaskId() != null && value.getZkfcTaskId().equals(taskId))
+         {
+             containsTaskId = true;
+             value.setZkfcTaskId(null);
+             value.setZkfcTaskName(null);
+
+             Map<String, String> zkfcNodeTaskNames = getZkfcNodeTaskNames();
+             zkfcNodeTaskNames.remove(taskId);
+             setZkfcNodeTaskNames(zkfcNodeTaskNames);
+         }
+         if(containsTaskId)
+         {
+             if(value.isDead())
+                nameNodes.put(entry.getKey(), null);
+             setNameNodes(nameNodes);
+
+             deadNodeTracker.resetNameNodeTimeStamp();
+             nodesModified = true;
+         }
       }
     }
+    
     return nodesModified;
   }
   
