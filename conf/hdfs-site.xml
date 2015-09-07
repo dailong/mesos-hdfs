@@ -135,7 +135,7 @@
 
   <property>
     <name>dfs.image.compression.codec</name>
-    <value>org.apache.hadoop.io.compress.SnappyCodec</value>
+    <value>org.apache.hadoop.io.compress.DefaultCodec</value>
   </property>
 
   <property>
