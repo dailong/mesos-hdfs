@@ -291,22 +291,24 @@ public abstract class AbstractNodeExecutor implements Executor {
    * Let the scheduler know that the task is started.
    */
   private void sendTaskRunning(ExecutorDriver driver, Task task, String message) {
-       driver.sendStatusUpdate(TaskStatus.newBuilder()
-          .setTaskId(task.getTaskInfo().getTaskId())
-          .setState(TaskState.TASK_RUNNING)
-          .setMessage(message)
-          .build());
+      TaskStatus.Builder stateBuilder = TaskStatus.newBuilder()
+              .setTaskId(task.getTaskInfo().getTaskId())
+              .setState(TaskState.TASK_RUNNING);
+       if(message != null)
+           stateBuilder.setMessage(message);
+       driver.sendStatusUpdate(stateBuilder.build());
   }
   
   /**
    * Let the scheduler know that the task has failed with specific message.
    */
   private void sendTaskFailed(ExecutorDriver driver, Task task, String message) {
-    driver.sendStatusUpdate(TaskStatus.newBuilder()
+    TaskStatus.Builder stateBuilder = TaskStatus.newBuilder()
       .setTaskId(task.getTaskInfo().getTaskId())
-      .setState(TaskState.TASK_FAILED)
-      .setMessage(message)            
-      .build());
+      .setState(TaskState.TASK_FAILED);
+    if(message != null)
+        stateBuilder.setMessage(message);
+    driver.sendStatusUpdate(stateBuilder.build());
   }
 
   @Override
