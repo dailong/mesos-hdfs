@@ -327,10 +327,13 @@ public class PersistentStateStore implements IPersistentStateStore {
       Collection<NameNodeTaskInfo> nameNodes = getNameNodes().values();
       for(NameNodeTaskInfo info : nameNodes)
       {
-          if(info.getNameTaskId() != null)
-            ids.add(info.getNameTaskId());
-          if(info.getZkfcTaskId() != null)
-            ids.add(info.getZkfcTaskId());
+          if(info != null)
+          {
+            if(info.getNameTaskId() != null)
+              ids.add(info.getNameTaskId());
+            if(info.getZkfcTaskId() != null)
+              ids.add(info.getZkfcTaskId());
+          }
       }
       return ids;
   }
