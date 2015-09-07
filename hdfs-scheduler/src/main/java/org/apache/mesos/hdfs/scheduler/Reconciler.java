@@ -76,7 +76,9 @@ public class Reconciler implements Observer {
 
   private boolean taskIsPending(String taskId) {
     for (String t : pendingTasks) {
-      if (t.equals(taskId)) {
+      if(t == null) {
+         pendingTasks.remove(t);
+      } else if (t.equals(taskId)) {
         return true;
       }
     }
