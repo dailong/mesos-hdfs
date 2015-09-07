@@ -103,23 +103,5 @@ public class NameNodeTaskInfo implements Serializable
         }
         return info;
     }
-    
-    public boolean removeTaskId(String taskId)
-    {
-        if(nameTaskId != null && nameTaskId.equals(taskId))
-        {
-            nameTaskId = null;
-            nameTaskName = null;
-            return true;
-        }
-        else if(zkfcTaskId != null && zkfcTaskId.equals(taskId))
-        {
-            zkfcTaskId = null;
-            zkfcTaskName = null;
-            return true;
-        }
-        else
-            return false;
-    }
-    
+        
 }

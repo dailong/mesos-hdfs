@@ -34,11 +34,11 @@ public class PersistentStateStore implements IPersistentStateStore {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private IHdfsStore hdfsStore;
   private DeadNodeTracker deadNodeTracker;
-
+  
   private static final String FRAMEWORK_ID_KEY = "frameworkId";
   private static final String NAMENODE_TASKNAMES_KEY = "nameNodeTaskNames";
   private static final String JOURNALNODE_TASKNAMES_KEY = "journalNodeTaskNames";
-  // TODO (elingg) we need to also track ZKFC's state
+  private static final String ZKFC_TASKNAMES_KEY = "zkfcNodeTaskNames";
   // TODO (nicgrayson) add tests with in-memory state implementation for zookeeper
 
   @Inject
@@ -156,17 +156,33 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     nameNodes.put(info.getHostname(), info);
     setNameNodes(nameNodes);
-    Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
+    
+    
     if(info.getNameTaskId() != null)
+    {
+        Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
         nameNodeTaskNames.put(info.getNameTaskId(), info.getNameTaskName());
+        setNameNodeTaskNames(nameNodeTaskNames);
+    }
+
+    
     if(info.getZkfcTaskId() != null)
-        nameNodeTaskNames.put(info.getZkfcTaskId(), info.getZkfcTaskName());
-    setNameNodeTaskNames(nameNodeTaskNames);
+    {
+        Map<String, String> zkfcNodeTaskNames = getZkfcNodeTaskNames();
+        zkfcNodeTaskNames.put(info.getZkfcTaskId(), info.getZkfcTaskName());
+        setZkfcNodeTaskNames(zkfcNodeTaskNames);
+    }
+    
   }
 
   @Override
   public Map<String, String> getNameNodeTaskNames() {
     return getNodesMap(NAMENODE_TASKNAMES_KEY);
+  }
+  
+  @Override
+  public Map<String, String> getZkfcNodeTaskNames() {
+    return getNodesMap(ZKFC_TASKNAMES_KEY);
   }
 
   @Override
@@ -264,12 +280,12 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     setDataNodes(dataNodes);
   }
-
+  
   @Override
   public Map<String, String> getJournalNodes() {
     return getNodesMap(JOURNALNODES_KEY);
   }
-
+  
   @Override
   public Map<String, NameNodeTaskInfo> getNameNodes() {
     return getNameNodesMap();
@@ -368,22 +384,43 @@ public class PersistentStateStore implements IPersistentStateStore {
   
   private boolean removeTaskIdFromNameNodes(String taskId) {
     boolean nodesModified = false;
-
+    
     Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
     if (nameNodes.values().contains(taskId)) {
       for (Map.Entry<String, NameNodeTaskInfo> entry : nameNodes.entrySet()) {
         NameNodeTaskInfo value = entry.getValue();
-        if (value != null && value.removeTaskId(taskId)) 
+        if (value != null) 
         {
-          if(value.isDead())
-            nameNodes.put(entry.getKey(), null);
-          setNameNodes(nameNodes);
-          Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
-          nameNodeTaskNames.remove(taskId);
-          setNameNodeTaskNames(nameNodeTaskNames);
-          
-          deadNodeTracker.resetNameNodeTimeStamp();
-          nodesModified = true;
+           boolean containsTaskId = false;
+           if(value.getNameTaskId() != null && value.getNameTaskId().equals(taskId))
+           {
+               containsTaskId = true;
+               value.setNameTaskId(null);
+               value.setNameTaskId(null);
+               
+               Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
+               nameNodeTaskNames.remove(taskId);
+               setNameNodeTaskNames(nameNodeTaskNames);
+           }
+           else if(value.getZkfcTaskId() != null && value.getZkfcTaskId().equals(taskId))
+           {
+               containsTaskId = true;
+               value.setZkfcTaskId(null);
+               value.setZkfcTaskName(null);
+               
+               Map<String, String> zkfcNodeTaskNames = getZkfcNodeTaskNames();
+               zkfcNodeTaskNames.remove(taskId);
+               setZkfcNodeTaskNames(zkfcNodeTaskNames);
+           }
+           if(containsTaskId)
+           {
+               if(value.isDead())
+                  nameNodes.put(entry.getKey(), null);
+               setNameNodes(nameNodes);
+               
+               deadNodeTracker.resetNameNodeTimeStamp();
+               nodesModified = true;
+           }
         }
       }
     }
@@ -441,10 +478,20 @@ public class PersistentStateStore implements IPersistentStateStore {
   }
 
   private void setDataNodes(Map<String, String> dataNodes) {
-    try {
-      hdfsStore.set(DATANODES_KEY, dataNodes);
-    } catch (Exception e) {
-      logger.error("Error while setting data nodes in persistent state", e);
-    }
+        try {
+          hdfsStore.set(DATANODES_KEY, dataNodes);
+        } catch (Exception e) {
+          logger.error("Error while setting data nodes in persistent state", e);
+        }
   }
+  
+  private void setZkfcNodeTaskNames(Map<String, String> zkfcNodeTaskNames)
+  {
+        try {
+          hdfsStore.set(ZKFC_TASKNAMES_KEY, zkfcNodeTaskNames);
+        } catch (Exception e) {
+          logger.error("Error while setting zkfc node task names in persistent state", e);
+        }
+  }
+  
 }

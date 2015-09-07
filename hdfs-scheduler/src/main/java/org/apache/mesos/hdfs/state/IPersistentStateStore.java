@@ -24,6 +24,8 @@ public interface IPersistentStateStore {
 
   Map<String, String> getNameNodeTaskNames();
 
+  Map<String, String> getZkfcNodeTaskNames();
+  
   Map<String, String> getJournalNodeTaskNames();
 
   List<String> getDeadJournalNodes();

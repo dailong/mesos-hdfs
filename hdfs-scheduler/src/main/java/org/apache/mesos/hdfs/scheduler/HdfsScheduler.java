@@ -410,6 +410,18 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       log.error(errorStr);
       throw new SchedulerException(errorStr);
     }
+    if (taskType.equals(HDFSConstants.ZKFC_NODE_ID)) {
+      Collection<String> zkfcNodeTaskNames = persistenceStore.getZkfcNodeTaskNames().values();
+      for (int i = 1; i <= HDFSConstants.TOTAL_NAME_NODES; i++) {
+        if (!zkfcNodeTaskNames.contains(HDFSConstants.ZKFC_NODE_ID + i)) {
+          return HDFSConstants.ZKFC_NODE_ID + i;
+        }
+      }
+      String errorStr = "Cluster is in inconsistent state. " +
+        "Trying to launch more zkfc nodes, but they are all already running.";
+      log.error(errorStr);
+      throw new SchedulerException(errorStr);
+    }
     if (taskType.equals(HDFSConstants.JOURNAL_NODE_ID)) {
       Collection<String> journalNodeTaskNames = persistenceStore.getJournalNodeTaskNames().values();
       for (int i = 1; i <= hdfsFrameworkConfig.getJournalNodeCount(); i++) {
