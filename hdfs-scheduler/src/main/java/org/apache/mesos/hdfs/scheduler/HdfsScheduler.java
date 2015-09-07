@@ -143,7 +143,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
 
   
   @Override
-  public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
+  public void statusUpdate(SchedulerDriver driver, TaskStatus status) {    
     log.info(String.format(
       "Received status update for taskId=%s state=%s message='%s' stagingTasks.size=%d",
       status.getTaskId().getValue(),
@@ -154,7 +154,12 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     log.info("Notifying observers");
     setChanged();
     notifyObservers(status);
-
+    
+    boolean nameNode = isTaskOfType(status.getTaskId(), HDFSConstants.NAME_NODE_TASKID);
+    boolean zkfcNode = isTaskOfType(status.getTaskId(), HDFSConstants.ZKFC_NODE_ID);
+    boolean dataNode = isTaskOfType(status.getTaskId(), HDFSConstants.DATA_NODE_ID);
+    boolean journalNode = isTaskOfType(status.getTaskId(), HDFSConstants.JOURNAL_NODE_ID);
+    
     if (!isStagingState(status)) {
       liveState.removeStagingTask(status.getTaskId());
     }
@@ -171,56 +176,79 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
 
       log.info(String.format("Current Acquisition Phase: %s", liveState
         .getCurrentAcquisitionPhase().toString()));
-
+      
       switch (liveState.getCurrentAcquisitionPhase()) {
         case RECONCILING_TASKS:
           break;
         case JOURNAL_NODES:
-          if (liveState.getJournalNodeSize() == hdfsFrameworkConfig.getJournalNodeCount()) {
-            // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
-            reloadConfigsOnAllRunningTasks(driver);
-            correctCurrentPhase();
+          if(!journalNode) {
+              log.error("Task "+status.getTaskId().getValue()+" launched during JOURNAL_NODES phase");
+          } else {
+            if (liveState.getJournalNodeSize() == hdfsFrameworkConfig.getJournalNodeCount()) {
+              // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
+              reloadConfigsOnAllRunningTasks(driver);
+              correctCurrentPhase();
+            }
           }
           break;
         case START_NAME_NODES:
-          if (liveState.getNameNodeSize() == HDFSConstants.TOTAL_NAME_NODES) {
-            // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
-            reloadConfigsOnAllRunningTasks(driver);
-            correctCurrentPhase();
+          if(!nameNode && !zkfcNode)
+          {
+              log.error("Task "+status.getTaskId().getValue()+" launched during START_NAME_NODES phase");
+          } else {
+            if (liveState.getNameNodeSize() == HDFSConstants.TOTAL_NAME_NODES) {
+              // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
+              reloadConfigsOnAllRunningTasks(driver);
+              correctCurrentPhase();
+            }
           }
           break;
         case FORMAT_NAME_NODES:
-          if (!liveState.isNameNode1Initialized()
-            && !liveState.isNameNode2Initialized()) {
-            dnsResolver.sendMessageAfterNNResolvable(
-              driver,
-              liveState.getFirstNameNodeTaskId(),
-              liveState.getFirstNameNodeSlaveId(),
-              HDFSConstants.NAME_NODE_INIT_MESSAGE);
-          } else if (!liveState.isNameNode1Initialized()) {
-            dnsResolver.sendMessageAfterNNResolvable(
-              driver,
-              liveState.getFirstNameNodeTaskId(),
-              liveState.getFirstNameNodeSlaveId(),
-              HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
-          } else if (!liveState.isNameNode2Initialized()) {
-            dnsResolver.sendMessageAfterNNResolvable(
-              driver,
-              liveState.getSecondNameNodeTaskId(),
-              liveState.getSecondNameNodeSlaveId(),
-              HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
+          if(!nameNode && !zkfcNode)
+          {
+             log.error("Task "+status.getTaskId().getValue()+" launched during FORMAT_NAME_NODES phase");
           } else {
-            correctCurrentPhase();
+            if (!liveState.isNameNode1Initialized()
+              && !liveState.isNameNode2Initialized()) {
+              dnsResolver.sendMessageAfterNNResolvable(
+                driver,
+                liveState.getFirstNameNodeTaskId(),
+                liveState.getFirstNameNodeSlaveId(),
+                HDFSConstants.NAME_NODE_INIT_MESSAGE);
+            } else if (!liveState.isNameNode1Initialized()) {
+              dnsResolver.sendMessageAfterNNResolvable(
+                driver,
+                liveState.getFirstNameNodeTaskId(),
+                liveState.getFirstNameNodeSlaveId(),
+                HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
+            } else if (!liveState.isNameNode2Initialized()) {
+              dnsResolver.sendMessageAfterNNResolvable(
+                driver,
+                liveState.getSecondNameNodeTaskId(),
+                liveState.getSecondNameNodeSlaveId(),
+                HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
+            } else {
+              correctCurrentPhase();
+            }
           }
           break;
         // TODO (elingg) add a configurable number of data nodes
         case DATA_NODES:
+          if(!dataNode)
+          {
+              log.error("Task "+status.getTaskId().getValue()+" launched during DATA_NODES phase");
+          }
           break;
       }
     } else {
       log.warn(String.format("Don't know how to handle state=%s for taskId=%s",
         status.getState(), status.getTaskId().getValue()));
     }
+  }
+  
+  private boolean isTaskOfType(TaskID taskId, String nodeType)
+  {
+      return taskId.getValue().contains(nodeType);
   }
 
   @Override

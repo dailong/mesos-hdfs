@@ -99,9 +99,9 @@ public class LiveState {
   private void setNewNameNodeInitialized(TaskStatus status) {
     TaskID taskId = status.getTaskId();
 
-    if (taskId.equals(nameNode1State.getTaskId()) || nameNode1State.status == null) {
+    if (taskId.equals(nameNode1State.getTaskId()) || nameNode1State.nameTaskStatus == null) {
       nameNode1State.set(status, true);
-    } else if (taskId.equals(nameNode2State.getTaskId()) || nameNode2State.status == null) {
+    } else if (taskId.equals(nameNode2State.getTaskId()) || nameNode2State.nameTaskStatus == null) {
       nameNode2State.set(status, true);
     } 
   }
@@ -153,37 +153,38 @@ public class LiveState {
   }
 
   private class NameNodeState {
+    
     private String name;
-    private TaskStatus status;
+    private TaskStatus nameTaskStatus;    
     private Boolean initialized;
-
+    
     public NameNodeState(String name) {
       this.name = name;
     }
 
     public Boolean hasStatus() {
-      return status != null;
+      return nameTaskStatus != null;
     }
 
     public Boolean initialized() {
-      return status != null && initialized;
+      return nameTaskStatus != null && initialized;
     }
 
     public void set(TaskStatus status, Boolean initialized) {
-      this.status = status;
+      this.nameTaskStatus = status;
       this.initialized = initialized;
       log.info(String.format("Set Node '%s' state to status: '%s', initialized: '%s'", name, status, initialized));
     }
 
     public void clear(TaskID taskId) {
-      if (hasStatus() && status.getTaskId().equals(taskId)) {
+      if (hasStatus() && nameTaskStatus.getTaskId().equals(taskId)) {
         set(null, false);
       }
     }
 
     public TaskID getTaskId() {
       if (hasStatus()) {
-        return status.getTaskId();
+        return nameTaskStatus.getTaskId();
       } else {
         return null;
       } 
@@ -191,7 +192,7 @@ public class LiveState {
 
     public SlaveID getSlaveId() {
       if (hasStatus()) {
-        return status.getSlaveId();
+        return nameTaskStatus.getSlaveId();
       } else {
         return null;
       } 

@@ -182,17 +182,18 @@ public abstract class AbstractNodeExecutor implements Executor {
   /**
    * Starts a task's process so it goes into running state.
    */
-  protected void startProcess(ExecutorDriver driver, Task task) {
+  protected void startProcess(ExecutorDriver driver, Task task, String message) {
     reloadConfig();
     if (task.getProcess() == null) {
       try {
         ProcessBuilder processBuilder = new ProcessBuilder("sh", "-c", task.getCmd());
         task.setProcess(processBuilder.start());
-        redirectProcess(task.getProcess());
+        redirectProcess(task.getProcess());       
+        sendTaskRunning(driver, task, message);
       } catch (IOException e) {
         log.error("Unable to start process:", e);
         task.getProcess().destroy();
-        sendTaskFailed(driver, task);
+        sendTaskFailed(driver, task, message);
       }
     } else {
       log.error("Tried to start process, but process already running");
@@ -283,9 +284,28 @@ public abstract class AbstractNodeExecutor implements Executor {
    * Let the scheduler know that the task has failed.
    */
   private void sendTaskFailed(ExecutorDriver driver, Task task) {
+      sendTaskFailed(driver, task, null);
+  }
+  
+  /**
+   * Let the scheduler know that the task is started.
+   */
+  private void sendTaskRunning(ExecutorDriver driver, Task task, String message) {
+       driver.sendStatusUpdate(TaskStatus.newBuilder()
+          .setTaskId(task.getTaskInfo().getTaskId())
+          .setState(TaskState.TASK_RUNNING)
+          .setMessage(message)
+          .build());
+  }
+  
+  /**
+   * Let the scheduler know that the task has failed with specific message.
+   */
+  private void sendTaskFailed(ExecutorDriver driver, Task task, String message) {
     driver.sendStatusUpdate(TaskStatus.newBuilder()
       .setTaskId(task.getTaskInfo().getTaskId())
       .setState(TaskState.TASK_FAILED)
+      .setMessage(message)            
       .build());
   }
 
