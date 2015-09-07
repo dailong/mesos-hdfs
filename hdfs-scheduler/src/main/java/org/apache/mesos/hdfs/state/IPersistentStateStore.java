@@ -5,6 +5,7 @@ import org.apache.mesos.Protos;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.mesos.hdfs.util.NameNodeTaskInfo;
 
 /**
  * Entry point for persistence for the HDFS scheduler.
@@ -33,7 +34,7 @@ public interface IPersistentStateStore {
 
   Map<String, String> getJournalNodes();
 
-  Map<String, String> getNameNodes();
+  Map<String, NameNodeTaskInfo> getNameNodes();
 
   Map<String, String> getDataNodes();
 

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import org.apache.mesos.hdfs.util.NameNodeTaskInfo;
 
 import static org.apache.mesos.hdfs.util.NodeTypes.*;
 
@@ -85,46 +86,58 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     return frameworkID;
   }
-
+  
   @Override
   public void removeTaskId(String taskId) {
     // TODO (elingg) optimize this method/ Possibly index by task id instead of hostname/
     // Possibly call removeTask(slaveId, taskId) to avoid iterating through all maps
-
+    
     if (removeTaskIdFromJournalNodes(taskId) ||
       removeTaskIdFromNameNodes(taskId) ||
-      removeTaskIdFromDataNodes(taskId)) {
+      removeTaskIdFromDataNodes(taskId)) 
+    {
       logger.debug("task id: " + taskId + " removed");
     } else {
       logger.warn("task id: " + taskId + " request to be removed doesn't exist");
     }
   }
-
+  
   @Override
   public void addHdfsNode(Protos.TaskID taskId, String hostname, String taskType, String taskName) {
     switch (taskType) {
       case HDFSConstants.NAME_NODE_ID:
-        addNameNode(taskId, hostname, taskName);
+      {
+        NameNodeTaskInfo info = new NameNodeTaskInfo(hostname);
+        info.setNameTaskId(taskId.getValue());
+        info.setNameTaskName(taskName);
+        addNameNode(info);
         break;
+      }
+      case HDFSConstants.ZKFC_NODE_ID:
+      {
+        NameNodeTaskInfo info = new NameNodeTaskInfo(hostname);
+        info.setZkfcTaskId(taskId.getValue());
+        info.setZkfcTaskName(taskName);
+        addNameNode(info);
+        break;
+      }
       case HDFSConstants.JOURNAL_NODE_ID:
         addJournalNode(taskId, hostname, taskName);
         break;
       case HDFSConstants.DATA_NODE_ID:
         addDataNode(taskId, hostname);
         break;
-      case HDFSConstants.ZKFC_NODE_ID:
-        break;
       default:
         logger.error("Task name unknown");
     }
   }
-
+  
   private void addDataNode(Protos.TaskID taskId, String hostname) {
     Map<String, String> dataNodes = getDataNodes();
     dataNodes.put(hostname, taskId.getValue());
     setDataNodes(dataNodes);
   }
-
+  
   private void addJournalNode(Protos.TaskID taskId, String hostname, String taskName) {
     Map<String, String> journalNodes = getJournalNodes();
     journalNodes.put(hostname, taskId.getValue());
@@ -133,13 +146,21 @@ public class PersistentStateStore implements IPersistentStateStore {
     journalNodeTaskNames.put(taskId.getValue(), taskName);
     setJournalNodeTaskNames(journalNodeTaskNames);
   }
-
-  private void addNameNode(Protos.TaskID taskId, String hostname, String taskName) {
-    Map<String, String> nameNodes = getNameNodes();
-    nameNodes.put(hostname, taskId.getValue());
+  
+  private void addNameNode(NameNodeTaskInfo info) 
+  {
+    Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
+    if(nameNodes.containsKey(info.getHostname()))
+    {
+        info = info.join(nameNodes.get(info.getHostname()));        
+    }
+    nameNodes.put(info.getHostname(), info);
     setNameNodes(nameNodes);
     Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
-    nameNodeTaskNames.put(taskId.getValue(), taskName);
+    if(info.getNameTaskId() != null)
+        nameNodeTaskNames.put(info.getNameTaskId(), info.getNameTaskName());
+    if(info.getZkfcTaskId() != null)
+        nameNodeTaskNames.put(info.getZkfcTaskId(), info.getZkfcTaskName());
     setNameNodeTaskNames(nameNodeTaskNames);
   }
 
@@ -191,10 +212,12 @@ public class PersistentStateStore implements IPersistentStateStore {
     if (deadNodeTracker.nameNodeTimerExpired()) {
       removeDeadNameNodes();
     } else {
-      Map<String, String> nameNodes = getNameNodes();
-      final Set<Map.Entry<String, String>> nameNodeEntries = nameNodes.entrySet();
-      for (Map.Entry<String, String> nameNode : nameNodeEntries) {
-        if (nameNode.getValue() == null) {
+      Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
+      final Set<Map.Entry<String, NameNodeTaskInfo>> nameNodeEntries = nameNodes.entrySet();
+      for (Map.Entry<String, NameNodeTaskInfo> nameNode : nameNodeEntries) {
+        NameNodeTaskInfo nameNodeInfo = nameNode.getValue();
+        if (nameNodeInfo.isDead()) 
+        {
           deadNameHosts.add(nameNode.getKey());
         }
       }
@@ -204,7 +227,7 @@ public class PersistentStateStore implements IPersistentStateStore {
 
   private void removeDeadNameNodes() {
     deadNodeTracker.resetNameNodeTimeStamp();
-    Map<String, String> nameNodes = getNameNodes();
+    Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
     List<String> deadNameHosts = getDeadNameNodes();
     for (String deadNameHost : deadNameHosts) {
       nameNodes.remove(deadNameHost);
@@ -248,43 +271,68 @@ public class PersistentStateStore implements IPersistentStateStore {
   }
 
   @Override
-  public Map<String, String> getNameNodes() {
-    return getNodesMap(NAMENODES_KEY);
+  public Map<String, NameNodeTaskInfo> getNameNodes() {
+    return getNameNodesMap();
   }
 
   @Override
   public Map<String, String> getDataNodes() {
     return getNodesMap(DATANODES_KEY);
   }
-
+  
   @Override
   public boolean journalNodeRunningOnSlave(String hostname) {
     return getJournalNodes().containsKey(hostname);
   }
-
+  
   @Override
   public boolean dataNodeRunningOnSlave(String hostname) {
     return getDataNodes().containsKey(hostname);
   }
-
+  
   @Override
   public boolean nameNodeRunningOnSlave(String hostname) {
     return getNameNodes().containsKey(hostname);
   }
-
+  
   @Override
   public Set<String> getAllTaskIds() {
     Set<String> allTaskIds = new HashSet<String>();
-    Collection<String> journalNodes = getJournalNodes().values();
-    Collection<String> nameNodes = getNameNodes().values();
+    Collection<String> journalNodes = getJournalNodes().values();    
     Collection<String> dataNodes = getDataNodes().values();
     allTaskIds.addAll(journalNodes);
-    allTaskIds.addAll(nameNodes);
+    allTaskIds.addAll(getnameNodeTaskIds());
     allTaskIds.addAll(dataNodes);
     return allTaskIds;
 
   }
-
+  
+  public Set<String> getnameNodeTaskIds() {
+      Set<String> ids = new HashSet<>();
+      Collection<NameNodeTaskInfo> nameNodes = getNameNodes().values();
+      for(NameNodeTaskInfo info : nameNodes)
+      {
+          if(info.getNameTaskId() != null)
+            ids.add(info.getNameTaskId());
+          if(info.getZkfcTaskId() != null)
+            ids.add(info.getZkfcTaskId());
+      }
+      return ids;
+  }
+  
+  private Map<String, NameNodeTaskInfo> getNameNodesMap() {
+    try {
+      HashMap<String, NameNodeTaskInfo> nodesMap = hdfsStore.get(NAMENODES_KEY);
+      if (nodesMap == null) {
+        return new HashMap<>();
+      }
+      return nodesMap;
+    } catch (Exception e) {
+      logger.error(String.format("Error while getting %s in persistent state", NAMENODES_KEY), e);
+      return new HashMap<>();
+    }
+  }
+  
   private Map<String, String> getNodesMap(String key) {
     try {
       HashMap<String, String> nodesMap = hdfsStore.get(key);
@@ -317,21 +365,23 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     return nodesModified;
   }
-
-
+  
   private boolean removeTaskIdFromNameNodes(String taskId) {
     boolean nodesModified = false;
 
-    Map<String, String> nameNodes = getNameNodes();
+    Map<String, NameNodeTaskInfo> nameNodes = getNameNodes();
     if (nameNodes.values().contains(taskId)) {
-      for (Map.Entry<String, String> entry : nameNodes.entrySet()) {
-        if (entry.getValue() != null && entry.getValue().equals(taskId)) {
-          nameNodes.put(entry.getKey(), null);
+      for (Map.Entry<String, NameNodeTaskInfo> entry : nameNodes.entrySet()) {
+        NameNodeTaskInfo value = entry.getValue();
+        if (value != null && value.removeTaskId(taskId)) 
+        {
+          if(value.isDead())
+            nameNodes.put(entry.getKey(), null);
           setNameNodes(nameNodes);
           Map<String, String> nameNodeTaskNames = getNameNodeTaskNames();
           nameNodeTaskNames.remove(taskId);
           setNameNodeTaskNames(nameNodeTaskNames);
-
+          
           deadNodeTracker.resetNameNodeTimeStamp();
           nodesModified = true;
         }
@@ -339,7 +389,7 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
     return nodesModified;
   }
-
+  
   private boolean removeTaskIdFromDataNodes(String taskId) {
     boolean nodesModified = false;
 
@@ -374,7 +424,7 @@ public class PersistentStateStore implements IPersistentStateStore {
     }
   }
 
-  private void setNameNodes(Map<String, String> nameNodes) {
+  private void setNameNodes(Map<String, NameNodeTaskInfo> nameNodes) {
     try {
       hdfsStore.set(NAMENODES_KEY, nameNodes);
     } catch (Exception e) {

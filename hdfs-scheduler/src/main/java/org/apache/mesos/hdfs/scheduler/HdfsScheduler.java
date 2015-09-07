@@ -163,7 +163,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     if (!isStagingState(status)) {
       liveState.removeStagingTask(status.getTaskId());
     }
-
+    
     if (isTerminalState(status)) {
       liveState.removeRunningTask(status.getTaskId());
       persistenceStore.removeTaskId(status.getTaskId().getValue());
@@ -572,10 +572,10 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       log.info("namenode offer does not have enough resources.");
       return false;
     }
-
+    
     boolean launch = false;
     List<String> deadNameNodes = persistenceStore.getDeadNameNodes();
-
+    
     if (deadNameNodes.isEmpty()) {
       if (persistenceStore.getNameNodes().size() == HDFSConstants.TOTAL_NAME_NODES) {
         log.info(String.format("Already running %s namenodes", HDFSConstants.TOTAL_NAME_NODES));
@@ -649,7 +649,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       slaveID,
       message.getBytes(Charset.defaultCharset()));
   }
-
+  
   private boolean isTerminalState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_FAILED)
       || taskStatus.getState().equals(TaskState.TASK_FINISHED)
@@ -657,15 +657,15 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       || taskStatus.getState().equals(TaskState.TASK_LOST)
       || taskStatus.getState().equals(TaskState.TASK_ERROR);
   }
-
+  
   private boolean isRunningState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_RUNNING);
   }
-
+  
   private boolean isStagingState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_STAGING);
   }
-
+  
   private void reloadConfigsOnAllRunningTasks(SchedulerDriver driver) {
     if (hdfsFrameworkConfig.usingNativeHadoopBinaries()) {
       return;
@@ -675,7 +675,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
         HDFSConstants.RELOAD_CONFIG);
     }
   }
-
+  
   private void correctCurrentPhase() {
     if (liveState.getJournalNodeSize() < hdfsFrameworkConfig.getJournalNodeCount()) {
       liveState.transitionTo(AcquisitionPhase.JOURNAL_NODES);
@@ -688,7 +688,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       liveState.transitionTo(AcquisitionPhase.DATA_NODES);
     }
   }
-
+  
   private boolean offerNotEnoughResources(Offer offer, double cpus, int mem) {
     for (Resource offerResource : offer.getResourcesList()) {
       if (offerResource.getName().equals("cpus") &&
@@ -704,9 +704,10 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     }
     return false;
   }
-
+  
   private void reconcile(SchedulerDriver driver) {
     liveState.transitionTo(AcquisitionPhase.RECONCILING_TASKS);
     reconciler.reconcile(driver);
   }
+  
 }
