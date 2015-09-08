@@ -1,0 +1,28 @@
+{
+  "healthChecks": [
+    {
+      "timeoutSeconds": 5,
+      "protocol": "HTTP",
+      "portIndex": 0,
+      "path": "/hdfs-site.xml",
+      "maxConsecutiveFailures": 0,
+      "intervalSeconds": 30,
+      "gracePeriodSeconds": 120
+    }
+  ],
+  "id": "/hdfs-mesos/scheduler",
+  "instances": 1,
+  "cpus": 0.5,
+  "mem": 512,
+  "ports": [
+    31564
+  ],
+  "uris": [
+    "ftp://jzajic-nb/deploy/hdfs-mesos-0.1.3.tgz",
+    "https://downloads.mesosphere.io/java/jre-7u76-linux-x64.tar.gz"
+  ],
+  "env": {
+  },
+  "cmd": "cd hdfs-mesos-0.1.3 && JAVA_HOME=$(pwd)/jre-7u76-linux-x64 && ./bin/hdfs-mesos"
+}
+
