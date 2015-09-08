@@ -69,11 +69,11 @@ public class TestScheduler {
     when(liveState.getCurrentAcquisitionPhase()).thenReturn(AcquisitionPhase.JOURNAL_NODES);
     when(liveState.getJournalNodeSize()).thenReturn(3);
 
-    Protos.TaskID nameTaskId = createTaskId(HDFSConstants.JOURNAL_NODE_ID+"1");
-    
+    Protos.TaskID nameTaskId = createTaskId(HDFSConstants.JOURNAL_NODE_ID + "1");
+
     scheduler.statusUpdate(driver,
         createTaskStatus(nameTaskId, Protos.TaskState.TASK_RUNNING));
-    
+
     verify(liveState).transitionTo(AcquisitionPhase.START_NAME_NODES);
   }
 

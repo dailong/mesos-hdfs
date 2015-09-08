@@ -26,7 +26,8 @@ public class NameNodeExecutor extends AbstractNodeExecutor {
   private final Log log = LogFactory.getLog(NameNodeExecutor.class);
 
   private Task nameNodeTask;
-  // TODO (elingg) better handling in livestate and persistent state of zkfc task. Right now they are
+  // TODO (elingg) better handling in livestate and persistent state of zkfc task. Right now they
+  // are
   // chained.
   private Task zkfcNodeTask;
 
@@ -59,7 +60,8 @@ public class NameNodeExecutor extends AbstractNodeExecutor {
   public void launchTask(final ExecutorDriver driver, final TaskInfo taskInfo) {
     executorInfo = taskInfo.getExecutor();
     Task task = new Task(taskInfo);
-    log.info(String.format("Launching task, taskId=%s cmd='%s'", taskInfo.getTaskId().getValue(), task.getCmd()));
+    log.info(String.format("Launching task, taskId=%s cmd='%s'", taskInfo.getTaskId().getValue(),
+        task.getCmd()));
     if (taskInfo.getTaskId().getValue().contains(HDFSConstants.NAME_NODE_TASKID)) {
       nameNodeTask = task;
       driver.sendStatusUpdate(TaskStatus.newBuilder()
@@ -117,7 +119,7 @@ public class NameNodeExecutor extends AbstractNodeExecutor {
       if (nameDir.exists() && messageStr.equals(HDFSConstants.NAME_NODE_INIT_MESSAGE)) {
         log.info(String
             .format("NameNode data directory %s already exists, not formatting",
-              nameDir));
+                nameDir));
       } else {
         FileUtils.deleteDirectory(nameDir);
         if (!nameDir.mkdirs()) {

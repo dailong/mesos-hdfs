@@ -56,7 +56,7 @@ public abstract class AbstractNodeExecutor implements Executor {
   public static void main(String[] args) {
     Injector injector = Guice.createInjector();
     MesosExecutorDriver driver = new MesosExecutorDriver(
-      injector.getInstance(AbstractNodeExecutor.class));
+        injector.getInstance(AbstractNodeExecutor.class));
     System.exit(driver.run() == Status.DRIVER_STOPPED ? 0 : 1);
   }
 
@@ -65,7 +65,7 @@ public abstract class AbstractNodeExecutor implements Executor {
    */
   @Override
   public void registered(ExecutorDriver driver, ExecutorInfo executorInfo,
-    FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
+      FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
     // Set up data dir
     setUpDataDir();
     if (!hdfsFrameworkConfig.usingNativeHadoopBinaries()) {
@@ -86,7 +86,6 @@ public abstract class AbstractNodeExecutor implements Executor {
     File secondaryDataDir = new File(hdfsFrameworkConfig.getSecondaryDataDir());
     FileUtils.createDir(secondaryDataDir);
   }
-
 
   /**
    * Create Symbolic Link for the HDFS binary.
@@ -163,7 +162,7 @@ public abstract class AbstractNodeExecutor implements Executor {
     int exitCode = process.waitFor();
     if (exitCode != 0) {
       String msg = "Error creating the symbolic link to hdfs binary."
-        + "Failure running 'chmod a+x " + pathEnvVarLocation + "'";
+          + "Failure running 'chmod a+x " + pathEnvVarLocation + "'";
       shutdownExecutor(1, msg);
     }
   }
@@ -188,7 +187,7 @@ public abstract class AbstractNodeExecutor implements Executor {
       try {
         ProcessBuilder processBuilder = new ProcessBuilder("sh", "-c", task.getCmd());
         task.setProcess(processBuilder.start());
-        redirectProcess(task.getProcess());       
+        redirectProcess(task.getProcess());
         sendTaskRunning(driver, task, message);
       } catch (IOException e) {
         log.error("Unable to start process:", e);
@@ -284,30 +283,30 @@ public abstract class AbstractNodeExecutor implements Executor {
    * Let the scheduler know that the task has failed.
    */
   private void sendTaskFailed(ExecutorDriver driver, Task task) {
-      sendTaskFailed(driver, task, null);
+    sendTaskFailed(driver, task, null);
   }
-  
+
   /**
    * Let the scheduler know that the task is started.
    */
   private void sendTaskRunning(ExecutorDriver driver, Task task, String message) {
-      TaskStatus.Builder stateBuilder = TaskStatus.newBuilder()
-              .setTaskId(task.getTaskInfo().getTaskId())
-              .setState(TaskState.TASK_RUNNING);
-       if(message != null)
-           stateBuilder.setMessage(message);
-       driver.sendStatusUpdate(stateBuilder.build());
+    TaskStatus.Builder stateBuilder = TaskStatus.newBuilder()
+        .setTaskId(task.getTaskInfo().getTaskId())
+        .setState(TaskState.TASK_RUNNING);
+    if (message != null)
+      stateBuilder.setMessage(message);
+    driver.sendStatusUpdate(stateBuilder.build());
   }
-  
+
   /**
    * Let the scheduler know that the task has failed with specific message.
    */
   private void sendTaskFailed(ExecutorDriver driver, Task task, String message) {
     TaskStatus.Builder stateBuilder = TaskStatus.newBuilder()
-      .setTaskId(task.getTaskInfo().getTaskId())
-      .setState(TaskState.TASK_FAILED);
-    if(message != null)
-        stateBuilder.setMessage(message);
+        .setTaskId(task.getTaskInfo().getTaskId())
+        .setState(TaskState.TASK_FAILED);
+    if (message != null)
+      stateBuilder.setMessage(message);
     driver.sendStatusUpdate(stateBuilder.build());
   }
 
