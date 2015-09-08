@@ -1,4 +1,3 @@
-
 package org.apache.mesos.hdfs.util;
 
 import java.io.Serializable;
@@ -7,107 +6,107 @@ import java.io.Serializable;
  *
  * @author jzajic
  */
-public class NameNodeTaskInfo implements Serializable 
+public class NameNodeTaskInfo implements Serializable
 {
 
-    String hostname;
-    
-    String nameTaskId;
-    String zkfcTaskId;
+  String hostname;
 
-    String nameTaskName;
-    String zkfcTaskName;
-    
-    public NameNodeTaskInfo(String hostname)
+  String nameTaskId;
+  String zkfcTaskId;
+
+  String nameTaskName;
+  String zkfcTaskName;
+
+  public NameNodeTaskInfo(String hostname)
+  {
+    this.hostname = hostname;
+  }
+
+  public String getHostname()
+  {
+    return hostname;
+  }
+
+  public void setHostname(String hostname)
+  {
+    this.hostname = hostname;
+  }
+
+  public String getNameTaskId()
+  {
+    return nameTaskId;
+  }
+
+  public void setNameTaskId(String nameTaskId)
+  {
+    this.nameTaskId = nameTaskId;
+  }
+
+  public String getZkfcTaskId()
+  {
+    return zkfcTaskId;
+  }
+
+  public void setZkfcTaskId(String zkfcTaskId)
+  {
+    this.zkfcTaskId = zkfcTaskId;
+  }
+
+  public String getNameTaskName()
+  {
+    return nameTaskName;
+  }
+
+  public void setNameTaskName(String nameTaskName)
+  {
+    this.nameTaskName = nameTaskName;
+  }
+
+  public String getZkfcTaskName()
+  {
+    return zkfcTaskName;
+  }
+
+  public void setZkfcTaskName(String zkfcTaskName)
+  {
+    this.zkfcTaskName = zkfcTaskName;
+  }
+
+  public boolean isDead()
+  {
+    return getNameTaskId() == null && getZkfcTaskId() == null;
+  }
+
+  public NameNodeTaskInfo join(NameNodeTaskInfo otherInstance)
+  {
+    NameNodeTaskInfo info = new NameNodeTaskInfo(hostname);
+    if (zkfcTaskId != null)
     {
-        this.hostname = hostname;
+      info.setZkfcTaskId(zkfcTaskId);
+      info.setZkfcTaskName(zkfcTaskName);
     }
-    
-    public String getHostname()
+    if (nameTaskId != null)
     {
-        return hostname;
+      info.setNameTaskId(nameTaskId);
+      info.setNameTaskName(nameTaskName);
     }
 
-    public void setHostname(String hostname)
+    if (otherInstance != null)
     {
-        this.hostname = hostname;
+      if (otherInstance.getZkfcTaskId() != null)
+      {
+        info.setZkfcTaskId(otherInstance.getZkfcTaskId());
+        info.setZkfcTaskName(otherInstance.getZkfcTaskName());
+      }
+
+      if (otherInstance.getNameTaskId() != null)
+      {
+        info.setNameTaskId(otherInstance.getNameTaskId());
+        info.setNameTaskName(otherInstance.getNameTaskName());
+      }
     }
 
-    public String getNameTaskId()
-    {
-        return nameTaskId;
-    }
+    return info;
+  }
 
-    public void setNameTaskId(String nameTaskId)
-    {
-        this.nameTaskId = nameTaskId;
-    }
-
-    public String getZkfcTaskId()
-    {
-        return zkfcTaskId;
-    }
-
-    public void setZkfcTaskId(String zkfcTaskId)
-    {
-        this.zkfcTaskId = zkfcTaskId;
-    }
-
-    public String getNameTaskName()
-    {
-        return nameTaskName;
-    }
-
-    public void setNameTaskName(String nameTaskName)
-    {
-        this.nameTaskName = nameTaskName;
-    }
-
-    public String getZkfcTaskName()
-    {
-        return zkfcTaskName;
-    }
-
-    public void setZkfcTaskName(String zkfcTaskName)
-    {
-        this.zkfcTaskName = zkfcTaskName;
-    }
-    
-    public boolean isDead()
-    {
-        return getNameTaskId() == null && getZkfcTaskId() == null;
-    }
-    
-    public NameNodeTaskInfo join(NameNodeTaskInfo otherInstance)
-    {
-        NameNodeTaskInfo info = new NameNodeTaskInfo(hostname);
-        if(zkfcTaskId != null)
-        {
-            info.setZkfcTaskId(zkfcTaskId);
-            info.setZkfcTaskName(zkfcTaskName);
-        }
-        if(nameTaskId != null)
-        {
-            info.setNameTaskId(nameTaskId);
-            info.setNameTaskName(nameTaskName);
-        }
-        
-        if(otherInstance != null)
-        {
-            if(otherInstance.getZkfcTaskId() != null)
-            {
-                info.setZkfcTaskId(otherInstance.getZkfcTaskId());
-                info.setZkfcTaskName(otherInstance.getZkfcTaskName());
-            }
-
-            if(otherInstance.getNameTaskId() != null)
-            {
-                info.setNameTaskId(otherInstance.getNameTaskId());
-                info.setNameTaskName(otherInstance.getNameTaskName());
-            }
-        }
-        
-        return info;
-    }
-        
 }

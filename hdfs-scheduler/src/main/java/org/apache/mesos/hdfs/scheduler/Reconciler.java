@@ -50,7 +50,7 @@ public class Reconciler implements Observer {
 
     implicitlyReconcileTasks(driver);
   }
-  
+
   public void update(Observable obs, Object obj) {
     TaskStatus status = (TaskStatus) obj;
 
@@ -74,17 +74,17 @@ public class Reconciler implements Observer {
       }
     }
   }
-  
+
   private boolean taskIsPending(String taskId) {
-      for (Iterator<String> iterator = pendingTasks.iterator(); iterator.hasNext();) {
-          String t = iterator.next();
-          if(t == null)
-              iterator.remove();
-          else if (t.equals(taskId)) {
-            return true;
-          }          
-      }    
-      return false;
+    for (Iterator<String> iterator = pendingTasks.iterator(); iterator.hasNext();) {
+      String t = iterator.next();
+      if (t == null)
+        iterator.remove();
+      else if (t.equals(taskId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean complete() {
@@ -99,7 +99,7 @@ public class Reconciler implements Observer {
     log.info("=========================================");
     log.info("pendingTasks size: " + pendingTasks.size());
     for (String t : pendingTasks) {
-        log.info(t);
+      log.info(t);
     }
     log.info("=========================================");
   }
@@ -111,7 +111,7 @@ public class Reconciler implements Observer {
 
   private void explicitlyReconcileTasks(SchedulerDriver driver) {
     log.info("Explicitly Reconciling Tasks");
-    List<TaskStatus> tasks  = new ArrayList<TaskStatus>();
+    List<TaskStatus> tasks = new ArrayList<TaskStatus>();
 
     for (String id : pendingTasks) {
       if (id == null) {
@@ -119,8 +119,8 @@ public class Reconciler implements Observer {
       } else {
         Protos.TaskID taskId = Protos.TaskID.newBuilder().setValue(id).build();
         TaskStatus taskStatus = TaskStatus.newBuilder()
-          .setTaskId(taskId)
-          .setState(TaskState.TASK_RUNNING).build();
+            .setTaskId(taskId)
+            .setState(TaskState.TASK_RUNNING).build();
 
         tasks.add(taskStatus);
       }
@@ -132,7 +132,7 @@ public class Reconciler implements Observer {
   private class ReconcileThread extends Thread {
     private static final int BACKOFF_MULTIPLIER = 2;
 
-    private Reconciler reconciler; 
+    private Reconciler reconciler;
     private SchedulerDriver driver;
 
     public ReconcileThread(Reconciler reconciler, SchedulerDriver driver) {
@@ -151,7 +151,8 @@ public class Reconciler implements Observer {
         try {
           Thread.sleep(sleepDuration);
         } catch (InterruptedException ex) {
-          log.warn(String.format("Reconciliation thread sleep was interrupted with exception: %s", ex));
+          log.warn(String.format("Reconciliation thread sleep was interrupted with exception: %s",
+              ex));
         }
 
         currDelay = getDelay(currDelay);

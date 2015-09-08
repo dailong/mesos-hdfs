@@ -57,7 +57,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
 
   @Inject
   public HdfsScheduler(HdfsFrameworkConfig hdfsFrameworkConfig,
-    LiveState liveState, IPersistentStateStore persistenceStore) {
+      LiveState liveState, IPersistentStateStore persistenceStore) {
 
     this.hdfsFrameworkConfig = hdfsFrameworkConfig;
     this.liveState = liveState;
@@ -76,13 +76,13 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
   @Override
   public void error(SchedulerDriver driver, String message) {
     log.error("Scheduler driver error: " + message);
-	// Currently, it's pretty hard to disambiguate this error from other causes of framework errors.
+    // Currently, it's pretty hard to disambiguate this error from other causes of framework errors.
     // Watch MESOS-2522 which will add a reason field for framework errors to help with this.
     // For now the frameworkId is removed for all messages.
     boolean removeFrameworkId = message.contains("re-register");
     suicide(removeFrameworkId);
   }
-    
+
   /**
     * Exits the JVM process, optionally deleting Marathon's FrameworkID
     * from the backing persistence store.
@@ -94,26 +94,26 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     * the scheduler may never re-register with the saved FrameworkID until
     * the leading Mesos master process is killed.
     */
-  private void suicide(Boolean removeFrameworkId)  {
-    if (removeFrameworkId) 
+  private void suicide(Boolean removeFrameworkId) {
+    if (removeFrameworkId)
     {
-        persistenceStore.setFrameworkId(null);
-        System.exit(9);
+      persistenceStore.setFrameworkId(null);
+      System.exit(9);
     }
   }
-  
+
   @Override
   public void executorLost(SchedulerDriver driver, ExecutorID executorID, SlaveID slaveID,
-    int status) {
+      int status) {
     log.info("Executor lost: executorId=" + executorID.getValue() + " slaveId="
-      + slaveID.getValue() + " status=" + status);
+        + slaveID.getValue() + " status=" + status);
   }
 
   @Override
   public void frameworkMessage(SchedulerDriver driver, ExecutorID executorID, SlaveID slaveID,
-    byte[] data) {
+      byte[] data) {
     log.info("Framework message: executorId=" + executorID.getValue() + " slaveId="
-      + slaveID.getValue() + " data='" + Arrays.toString(data) + "'");
+        + slaveID.getValue() + " data='" + Arrays.toString(data) + "'");
   }
 
   @Override
@@ -141,29 +141,28 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     reconcile(driver);
   }
 
-  
   @Override
-  public void statusUpdate(SchedulerDriver driver, TaskStatus status) {    
+  public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     log.info(String.format(
-      "Received status update for taskId=%s state=%s message='%s' stagingTasks.size=%d",
-      status.getTaskId().getValue(),
-      status.getState().toString(),
-      status.getMessage(),
-      liveState.getStagingTasksSize()));
+        "Received status update for taskId=%s state=%s message='%s' stagingTasks.size=%d",
+        status.getTaskId().getValue(),
+        status.getState().toString(),
+        status.getMessage(),
+        liveState.getStagingTasksSize()));
 
     log.info("Notifying observers");
     setChanged();
     notifyObservers(status);
-    
+
     boolean nameNode = isTaskOfType(status.getTaskId(), HDFSConstants.NAME_NODE_TASKID);
     boolean zkfcNode = isTaskOfType(status.getTaskId(), HDFSConstants.ZKFC_NODE_ID);
     boolean dataNode = isTaskOfType(status.getTaskId(), HDFSConstants.DATA_NODE_ID);
     boolean journalNode = isTaskOfType(status.getTaskId(), HDFSConstants.JOURNAL_NODE_ID);
-    
+
     if (!isStagingState(status)) {
       liveState.removeStagingTask(status.getTaskId());
     }
-    
+
     if (isTerminalState(status)) {
       liveState.removeRunningTask(status.getTaskId());
       persistenceStore.removeTaskId(status.getTaskId().getValue());
@@ -175,14 +174,15 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
       liveState.updateTaskForStatus(status);
 
       log.info(String.format("Current Acquisition Phase: %s", liveState
-        .getCurrentAcquisitionPhase().toString()));
-      
+          .getCurrentAcquisitionPhase().toString()));
+
       switch (liveState.getCurrentAcquisitionPhase()) {
         case RECONCILING_TASKS:
           break;
         case JOURNAL_NODES:
-          if(!journalNode) {
-              log.error("Task "+status.getTaskId().getValue()+" launched during JOURNAL_NODES phase");
+          if (!journalNode) {
+            log.error("Task " + status.getTaskId().getValue()
+                + " launched during JOURNAL_NODES phase");
           } else {
             if (liveState.getJournalNodeSize() == hdfsFrameworkConfig.getJournalNodeCount()) {
               // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
@@ -192,9 +192,10 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
           }
           break;
         case START_NAME_NODES:
-          if(!nameNode && !zkfcNode)
+          if (!nameNode && !zkfcNode)
           {
-              log.error("Task "+status.getTaskId().getValue()+" launched during START_NAME_NODES phase");
+            log.error("Task " + status.getTaskId().getValue()
+                + " launched during START_NAME_NODES phase");
           } else {
             if (liveState.getNameNodeSize() == HDFSConstants.TOTAL_NAME_NODES) {
               // TODO (elingg) move the reload to correctCurrentPhase and make it idempotent
@@ -204,29 +205,30 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
           }
           break;
         case FORMAT_NAME_NODES:
-          if(!nameNode && !zkfcNode)
+          if (!nameNode && !zkfcNode)
           {
-             log.error("Task "+status.getTaskId().getValue()+" launched during FORMAT_NAME_NODES phase");
+            log.error("Task " + status.getTaskId().getValue()
+                + " launched during FORMAT_NAME_NODES phase");
           } else {
             if (!liveState.isNameNode1Initialized()
-              && !liveState.isNameNode2Initialized()) {
+                && !liveState.isNameNode2Initialized()) {
               dnsResolver.sendMessageAfterNNResolvable(
-                driver,
-                liveState.getFirstNameNodeTaskId(),
-                liveState.getFirstNameNodeSlaveId(),
-                HDFSConstants.NAME_NODE_INIT_MESSAGE);
+                  driver,
+                  liveState.getFirstNameNodeTaskId(),
+                  liveState.getFirstNameNodeSlaveId(),
+                  HDFSConstants.NAME_NODE_INIT_MESSAGE);
             } else if (!liveState.isNameNode1Initialized()) {
               dnsResolver.sendMessageAfterNNResolvable(
-                driver,
-                liveState.getFirstNameNodeTaskId(),
-                liveState.getFirstNameNodeSlaveId(),
-                HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
+                  driver,
+                  liveState.getFirstNameNodeTaskId(),
+                  liveState.getFirstNameNodeSlaveId(),
+                  HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
             } else if (!liveState.isNameNode2Initialized()) {
               dnsResolver.sendMessageAfterNNResolvable(
-                driver,
-                liveState.getSecondNameNodeTaskId(),
-                liveState.getSecondNameNodeSlaveId(),
-                HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
+                  driver,
+                  liveState.getSecondNameNodeTaskId(),
+                  liveState.getSecondNameNodeSlaveId(),
+                  HDFSConstants.NAME_NODE_BOOTSTRAP_MESSAGE);
             } else {
               correctCurrentPhase();
             }
@@ -234,28 +236,29 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
           break;
         // TODO (elingg) add a configurable number of data nodes
         case DATA_NODES:
-          if(!dataNode)
+          if (!dataNode)
           {
-              log.error("Task "+status.getTaskId().getValue()+" launched during DATA_NODES phase");
+            log.error("Task " + status.getTaskId().getValue() + " launched during DATA_NODES phase");
           }
           break;
       }
     } else {
       log.warn(String.format("Don't know how to handle state=%s for taskId=%s",
-        status.getState(), status.getTaskId().getValue()));
+          status.getState(), status.getTaskId().getValue()));
     }
   }
-  
+
   private boolean isTaskOfType(TaskID taskId, String nodeType)
   {
-      return taskId.getValue().contains(nodeType);
+    return taskId.getValue().contains(nodeType);
   }
 
   @Override
   public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
     log.info(String.format("Received %d offers", offers.size()));
 
-    if (liveState.getCurrentAcquisitionPhase() == AcquisitionPhase.RECONCILING_TASKS && reconciler.complete()) {
+    if (liveState.getCurrentAcquisitionPhase() == AcquisitionPhase.RECONCILING_TASKS
+        && reconciler.complete()) {
       correctCurrentPhase();
     }
 
@@ -311,11 +314,11 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
   @Override
   public void run() {
     FrameworkInfo.Builder frameworkInfo = FrameworkInfo.newBuilder()
-      .setName(hdfsFrameworkConfig.getFrameworkName())
-      .setFailoverTimeout(hdfsFrameworkConfig.getFailoverTimeout())
-      .setUser(hdfsFrameworkConfig.getHdfsUser())
-      .setRole(hdfsFrameworkConfig.getHdfsRole())
-      .setCheckpoint(true);
+        .setName(hdfsFrameworkConfig.getFrameworkName())
+        .setFailoverTimeout(hdfsFrameworkConfig.getFailoverTimeout())
+        .setUser(hdfsFrameworkConfig.getHdfsUser())
+        .setRole(hdfsFrameworkConfig.getHdfsRole())
+        .setCheckpoint(true);
 
     try {
       FrameworkID frameworkID = persistenceStore.getFrameworkId();
@@ -347,8 +350,8 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     if (hdfsFrameworkConfig.cramCredentialsEnabled()) {
       try {
         Credential.Builder credentialBuilder = Credential.newBuilder()
-          .setPrincipal(hdfsFrameworkConfig.getPrincipal())
-          .setSecret(ByteString.copyFrom(hdfsFrameworkConfig.getSecret().getBytes("UTF-8")));
+            .setPrincipal(hdfsFrameworkConfig.getPrincipal())
+            .setSecret(ByteString.copyFrom(hdfsFrameworkConfig.getSecret().getBytes("UTF-8")));
 
         return credentialBuilder.build();
 
@@ -406,7 +409,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
         }
       }
       String errorStr = "Cluster is in inconsistent state. " +
-        "Trying to launch more namenodes, but they are all already running.";
+          "Trying to launch more namenodes, but they are all already running.";
       log.error(errorStr);
       throw new SchedulerException(errorStr);
     }
@@ -418,7 +421,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
         }
       }
       String errorStr = "Cluster is in inconsistent state. " +
-        "Trying to launch more zkfc nodes, but they are all already running.";
+          "Trying to launch more zkfc nodes, but they are all already running.";
       log.error(errorStr);
       throw new SchedulerException(errorStr);
     }
@@ -430,7 +433,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
         }
       }
       String errorStr = "Cluster is in inconsistent state. " +
-        "Trying to launch more journalnodes, but they all are already running.";
+          "Trying to launch more journalnodes, but they all are already running.";
       log.error(errorStr);
       throw new SchedulerException(errorStr);
     }
@@ -441,108 +444,128 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     int confServerPort = hdfsFrameworkConfig.getConfigServerPort();
 
     String cmd = "export JAVA_HOME=$MESOS_DIRECTORY/" + hdfsFrameworkConfig.getJreVersion()
-      + " && env ; cd hdfs-mesos-* && "
-      + "exec `if [ -z \"$JAVA_HOME\" ]; then echo java; "
-      + "else echo $JAVA_HOME/bin/java; fi` "
-      + "$HADOOP_OPTS "
-      + "$EXECUTOR_OPTS "
-      + "-cp lib/*.jar org.apache.mesos.hdfs.executor." + executorName;
+        + " && env ; cd hdfs-mesos-* && "
+        + "exec `if [ -z \"$JAVA_HOME\" ]; then echo java; "
+        + "else echo $JAVA_HOME/bin/java; fi` "
+        + "$HADOOP_OPTS "
+        + "$EXECUTOR_OPTS "
+        + "-cp lib/*.jar org.apache.mesos.hdfs.executor." + executorName;
 
     return ExecutorInfo
-      .newBuilder()
-      .setName(nodeName + " executor")
-      .setExecutorId(ExecutorID.newBuilder().setValue("executor." + taskIdName).build())
-      .addAllResources(getExecutorResources())
-      .setCommand(
-        CommandInfo
-          .newBuilder()
-          .addAllUris(
-            Arrays.asList(
-              CommandInfo.URI
+        .newBuilder()
+        .setName(nodeName + " executor")
+        .setExecutorId(ExecutorID.newBuilder().setValue("executor." + taskIdName).build())
+        .addAllResources(getExecutorResources())
+        .setCommand(
+            CommandInfo
                 .newBuilder()
-                .setValue(
-                  String.format("http://%s:%d/%s", hdfsFrameworkConfig.getFrameworkHostAddress(),
-                    confServerPort,
-                    HDFSConstants.HDFS_BINARY_FILE_NAME))
-                .build(),
-              CommandInfo.URI
-                .newBuilder()
-                .setValue(
-                  String.format("http://%s:%d/%s", hdfsFrameworkConfig.getFrameworkHostAddress(),
-                    confServerPort,
-                    HDFSConstants.HDFS_CONFIG_FILE_NAME))
-                .build(),
-              CommandInfo.URI
-                .newBuilder()
-                .setValue(hdfsFrameworkConfig.getJreUrl())
-                .build()))
-          .setEnvironment(Environment.newBuilder()
-            .addAllVariables(Arrays.asList(
-              Environment.Variable.newBuilder()
-                .setName("LD_LIBRARY_PATH")
-                .setValue(hdfsFrameworkConfig.getLdLibraryPath()).build(),
-              Environment.Variable.newBuilder()
-                .setName("HADOOP_OPTS")
-                .setValue(hdfsFrameworkConfig.getJvmOpts()).build(),
-              Environment.Variable.newBuilder()
-                .setName("HADOOP_HEAPSIZE")
-                .setValue(String.format("%d", hdfsFrameworkConfig.getHadoopHeapSize())).build(),
-              Environment.Variable.newBuilder()
-                .setName("HADOOP_NAMENODE_OPTS")
-                .setValue("-Xmx" + hdfsFrameworkConfig.getNameNodeHeapSize()
-                  + "m -Xms" + hdfsFrameworkConfig.getNameNodeHeapSize() + "m").build(),
-              Environment.Variable.newBuilder()
-                .setName("HADOOP_DATANODE_OPTS")
-                .setValue("-Xmx" + hdfsFrameworkConfig.getDataNodeHeapSize()
-                  + "m -Xms" + hdfsFrameworkConfig.getDataNodeHeapSize() + "m").build(),
-              Environment.Variable.newBuilder()
-                .setName("EXECUTOR_OPTS")
-                .setValue("-Xmx" + hdfsFrameworkConfig.getExecutorHeap()
-                  + "m -Xms" + hdfsFrameworkConfig.getExecutorHeap() + "m").build())))
-          .setValue(cmd).build())
-      .build();
+                .addAllUris(
+                    Arrays.asList(
+                        CommandInfo.URI
+                            .newBuilder()
+                            .setValue(
+                                String.format("http://%s:%d/%s",
+                                    hdfsFrameworkConfig.getFrameworkHostAddress(),
+                                    confServerPort,
+                                    HDFSConstants.HDFS_BINARY_FILE_NAME))
+                            .build(),
+                        CommandInfo.URI
+                            .newBuilder()
+                            .setValue(
+                                String.format("http://%s:%d/%s",
+                                    hdfsFrameworkConfig.getFrameworkHostAddress(),
+                                    confServerPort,
+                                    HDFSConstants.HDFS_CONFIG_FILE_NAME))
+                            .build(),
+                        CommandInfo.URI
+                            .newBuilder()
+                            .setValue(hdfsFrameworkConfig.getJreUrl())
+                            .build()))
+                .setEnvironment(
+                    Environment
+                        .newBuilder()
+                        .addAllVariables(
+                            Arrays.asList(
+                                Environment.Variable.newBuilder()
+                                    .setName("LD_LIBRARY_PATH")
+                                    .setValue(hdfsFrameworkConfig.getLdLibraryPath()).build(),
+                                Environment.Variable.newBuilder()
+                                    .setName("HADOOP_OPTS")
+                                    .setValue(hdfsFrameworkConfig.getJvmOpts()).build(),
+                                Environment.Variable
+                                    .newBuilder()
+                                    .setName("HADOOP_HEAPSIZE")
+                                    .setValue(
+                                        String.format("%d", hdfsFrameworkConfig.getHadoopHeapSize()))
+                                    .build(),
+                                Environment.Variable
+                                    .newBuilder()
+                                    .setName("HADOOP_NAMENODE_OPTS")
+                                    .setValue(
+                                        "-Xmx" + hdfsFrameworkConfig.getNameNodeHeapSize()
+                                            + "m -Xms" + hdfsFrameworkConfig.getNameNodeHeapSize()
+                                            + "m").build(),
+                                Environment.Variable
+                                    .newBuilder()
+                                    .setName("HADOOP_DATANODE_OPTS")
+                                    .setValue(
+                                        "-Xmx" + hdfsFrameworkConfig.getDataNodeHeapSize()
+                                            + "m -Xms" + hdfsFrameworkConfig.getDataNodeHeapSize()
+                                            + "m").build(),
+                                Environment.Variable.newBuilder()
+                                    .setName("EXECUTOR_OPTS")
+                                    .setValue("-Xmx" + hdfsFrameworkConfig.getExecutorHeap()
+                                        + "m -Xms" + hdfsFrameworkConfig.getExecutorHeap() + "m")
+                                    .build())))
+                .setValue(cmd).build())
+        .build();
   }
 
   private List<Resource> getExecutorResources() {
     return Arrays.asList(
-      Resource.newBuilder()
-        .setName("cpus")
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-          .setValue(hdfsFrameworkConfig.getExecutorCpus()).build())
-        .setRole(hdfsFrameworkConfig.getHdfsRole())
-        .build(),
-      Resource.newBuilder()
-        .setName("mem")
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-          .setValue(hdfsFrameworkConfig.getExecutorHeap() * hdfsFrameworkConfig.getJvmOverhead()).build())
-        .setRole(hdfsFrameworkConfig.getHdfsRole())
-        .build());
+        Resource.newBuilder()
+            .setName("cpus")
+            .setType(Value.Type.SCALAR)
+            .setScalar(Value.Scalar.newBuilder()
+                .setValue(hdfsFrameworkConfig.getExecutorCpus()).build())
+            .setRole(hdfsFrameworkConfig.getHdfsRole())
+            .build(),
+        Resource
+            .newBuilder()
+            .setName("mem")
+            .setType(Value.Type.SCALAR)
+            .setScalar(
+                Value.Scalar
+                    .newBuilder()
+                    .setValue(
+                        hdfsFrameworkConfig.getExecutorHeap()
+                            * hdfsFrameworkConfig.getJvmOverhead()).build())
+            .setRole(hdfsFrameworkConfig.getHdfsRole())
+            .build());
   }
 
   private List<Resource> getTaskResources(String taskName) {
     return Arrays.asList(
-      Resource.newBuilder()
-        .setName("cpus")
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-          .setValue(hdfsFrameworkConfig.getTaskCpus(taskName)).build())
-        .setRole(hdfsFrameworkConfig.getHdfsRole())
-        .build(),
-      Resource.newBuilder()
-        .setName("mem")
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-          .setValue(hdfsFrameworkConfig.getTaskHeapSize(taskName) *
-            hdfsFrameworkConfig.getJvmOverhead()).build())
-        .setRole(hdfsFrameworkConfig.getHdfsRole())
-        .build());
+        Resource.newBuilder()
+            .setName("cpus")
+            .setType(Value.Type.SCALAR)
+            .setScalar(Value.Scalar.newBuilder()
+                .setValue(hdfsFrameworkConfig.getTaskCpus(taskName)).build())
+            .setRole(hdfsFrameworkConfig.getHdfsRole())
+            .build(),
+        Resource.newBuilder()
+            .setName("mem")
+            .setType(Value.Type.SCALAR)
+            .setScalar(Value.Scalar.newBuilder()
+                .setValue(hdfsFrameworkConfig.getTaskHeapSize(taskName) *
+                    hdfsFrameworkConfig.getJvmOverhead()).build())
+            .setRole(hdfsFrameworkConfig.getHdfsRole())
+            .build());
   }
 
   private boolean tryToLaunchJournalNode(SchedulerDriver driver, Offer offer) {
     if (offerNotEnoughResources(offer, hdfsFrameworkConfig.getJournalNodeCpus(),
-      hdfsFrameworkConfig.getJournalNodeHeapSize())) {
+        hdfsFrameworkConfig.getJournalNodeHeapSize())) {
       log.info("journal offer does not have enough resources");
       return false;
     }
@@ -554,12 +577,13 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
 
     if (deadJournalNodes.isEmpty()) {
       if (persistenceStore.getJournalNodes().size() == hdfsFrameworkConfig.getJournalNodeCount()) {
-        log.info(String.format("Already running %s journalnodes", hdfsFrameworkConfig.getJournalNodeCount()));
+        log.info(String.format("Already running %s journalnodes",
+            hdfsFrameworkConfig.getJournalNodeCount()));
       } else if (persistenceStore.journalNodeRunningOnSlave(offer.getHostname())) {
         log.info(String.format("Already running journalnode on %s", offer.getHostname()));
       } else if (persistenceStore.dataNodeRunningOnSlave(offer.getHostname())) {
         log.info(String.format("Cannot colocate journalnode and datanode on %s",
-          offer.getHostname()));
+            offer.getHostname()));
       } else {
         launch = true;
       }
@@ -568,26 +592,26 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     }
     if (launch) {
       return launchNode(
-        driver,
-        offer,
-        HDFSConstants.JOURNAL_NODE_ID,
-        Arrays.asList(HDFSConstants.JOURNAL_NODE_ID),
-        HDFSConstants.NODE_EXECUTOR_ID);
+          driver,
+          offer,
+          HDFSConstants.JOURNAL_NODE_ID,
+          Arrays.asList(HDFSConstants.JOURNAL_NODE_ID),
+          HDFSConstants.NODE_EXECUTOR_ID);
     }
     return false;
   }
 
   private boolean tryToLaunchNameNode(SchedulerDriver driver, Offer offer) {
     if (offerNotEnoughResources(offer,
-      (hdfsFrameworkConfig.getNameNodeCpus() + hdfsFrameworkConfig.getZkfcCpus()),
-      (hdfsFrameworkConfig.getNameNodeHeapSize() + hdfsFrameworkConfig.getZkfcHeapSize()))) {
+        (hdfsFrameworkConfig.getNameNodeCpus() + hdfsFrameworkConfig.getZkfcCpus()),
+        (hdfsFrameworkConfig.getNameNodeHeapSize() + hdfsFrameworkConfig.getZkfcHeapSize()))) {
       log.info("namenode offer does not have enough resources.");
       return false;
     }
-    
+
     boolean launch = false;
     List<String> deadNameNodes = persistenceStore.getDeadNameNodes();
-    
+
     if (deadNameNodes.isEmpty()) {
       if (persistenceStore.getNameNodes().size() == HDFSConstants.TOTAL_NAME_NODES) {
         log.info(String.format("Already running %s namenodes", HDFSConstants.TOTAL_NAME_NODES));
@@ -597,7 +621,7 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
         log.info(String.format("Cannot colocate namenode and datanode on %s", offer.getHostname()));
       } else if (!persistenceStore.journalNodeRunningOnSlave(offer.getHostname())) {
         log.info(String.format("We need to coloate the namenode with a journalnode and there is"
-          + "no journalnode running on this host. %s", offer.getHostname()));
+            + "no journalnode running on this host. %s", offer.getHostname()));
       } else {
         launch = true;
       }
@@ -606,18 +630,18 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     }
     if (launch) {
       return launchNode(
-        driver,
-        offer,
-        HDFSConstants.NAME_NODE_ID,
-        Arrays.asList(HDFSConstants.NAME_NODE_ID, HDFSConstants.ZKFC_NODE_ID),
-        HDFSConstants.NAME_NODE_EXECUTOR_ID);
+          driver,
+          offer,
+          HDFSConstants.NAME_NODE_ID,
+          Arrays.asList(HDFSConstants.NAME_NODE_ID, HDFSConstants.ZKFC_NODE_ID),
+          HDFSConstants.NAME_NODE_EXECUTOR_ID);
     }
     return false;
   }
 
   private boolean tryToLaunchDataNode(SchedulerDriver driver, Offer offer) {
     if (offerNotEnoughResources(offer, hdfsFrameworkConfig.getDataNodeCpus(),
-      hdfsFrameworkConfig.getDataNodeHeapSize())) {
+        hdfsFrameworkConfig.getDataNodeHeapSize())) {
       log.info("datanode offer does not have enough resources");
       return false;
     }
@@ -629,8 +653,8 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     // entirely?
     if (deadDataNodes.isEmpty()) {
       if (persistenceStore.dataNodeRunningOnSlave(offer.getHostname())
-        || persistenceStore.nameNodeRunningOnSlave(offer.getHostname())
-        || persistenceStore.journalNodeRunningOnSlave(offer.getHostname())) {
+          || persistenceStore.nameNodeRunningOnSlave(offer.getHostname())
+          || persistenceStore.journalNodeRunningOnSlave(offer.getHostname())) {
         log.info(String.format("Already running hdfs task on %s", offer.getHostname()));
       } else {
         launch = true;
@@ -640,86 +664,86 @@ public class HdfsScheduler extends Observable implements org.apache.mesos.Schedu
     }
     if (launch) {
       return launchNode(
-        driver,
-        offer,
-        HDFSConstants.DATA_NODE_ID,
-        Arrays.asList(HDFSConstants.DATA_NODE_ID),
-        HDFSConstants.NODE_EXECUTOR_ID);
+          driver,
+          offer,
+          HDFSConstants.DATA_NODE_ID,
+          Arrays.asList(HDFSConstants.DATA_NODE_ID),
+          HDFSConstants.NODE_EXECUTOR_ID);
     }
     return false;
   }
 
   public void sendMessageTo(SchedulerDriver driver, TaskID taskId,
-    SlaveID slaveID, String message) {
+      SlaveID slaveID, String message) {
     log.info(String.format("Sending message '%s' to taskId=%s, slaveId=%s", message,
-      taskId.getValue(), slaveID.getValue()));
+        taskId.getValue(), slaveID.getValue()));
     String postfix = taskId.getValue();
     postfix = postfix.substring(postfix.indexOf('.') + 1, postfix.length());
     postfix = postfix.substring(postfix.indexOf('.') + 1, postfix.length());
     driver.sendFrameworkMessage(
-      ExecutorID.newBuilder().setValue("executor." + postfix).build(),
-      slaveID,
-      message.getBytes(Charset.defaultCharset()));
+        ExecutorID.newBuilder().setValue("executor." + postfix).build(),
+        slaveID,
+        message.getBytes(Charset.defaultCharset()));
   }
-  
+
   private boolean isTerminalState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_FAILED)
-      || taskStatus.getState().equals(TaskState.TASK_FINISHED)
-      || taskStatus.getState().equals(TaskState.TASK_KILLED)
-      || taskStatus.getState().equals(TaskState.TASK_LOST)
-      || taskStatus.getState().equals(TaskState.TASK_ERROR);
+        || taskStatus.getState().equals(TaskState.TASK_FINISHED)
+        || taskStatus.getState().equals(TaskState.TASK_KILLED)
+        || taskStatus.getState().equals(TaskState.TASK_LOST)
+        || taskStatus.getState().equals(TaskState.TASK_ERROR);
   }
-  
+
   private boolean isRunningState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_RUNNING);
   }
-  
+
   private boolean isStagingState(TaskStatus taskStatus) {
     return taskStatus.getState().equals(TaskState.TASK_STAGING);
   }
-  
+
   private void reloadConfigsOnAllRunningTasks(SchedulerDriver driver) {
     if (hdfsFrameworkConfig.usingNativeHadoopBinaries()) {
       return;
     }
     for (Protos.TaskStatus taskStatus : liveState.getRunningTasks().values()) {
       sendMessageTo(driver, taskStatus.getTaskId(), taskStatus.getSlaveId(),
-        HDFSConstants.RELOAD_CONFIG);
+          HDFSConstants.RELOAD_CONFIG);
     }
   }
-  
+
   private void correctCurrentPhase() {
     if (liveState.getJournalNodeSize() < hdfsFrameworkConfig.getJournalNodeCount()) {
       liveState.transitionTo(AcquisitionPhase.JOURNAL_NODES);
     } else if (liveState.getNameNodeSize() < HDFSConstants.TOTAL_NAME_NODES) {
       liveState.transitionTo(AcquisitionPhase.START_NAME_NODES);
     } else if (!liveState.isNameNode1Initialized()
-      || !liveState.isNameNode2Initialized()) {
+        || !liveState.isNameNode2Initialized()) {
       liveState.transitionTo(AcquisitionPhase.FORMAT_NAME_NODES);
     } else {
       liveState.transitionTo(AcquisitionPhase.DATA_NODES);
     }
   }
-  
+
   private boolean offerNotEnoughResources(Offer offer, double cpus, int mem) {
     for (Resource offerResource : offer.getResourcesList()) {
       if (offerResource.getName().equals("cpus") &&
-        cpus + hdfsFrameworkConfig.getExecutorCpus() > offerResource.getScalar().getValue()) {
+          cpus + hdfsFrameworkConfig.getExecutorCpus() > offerResource.getScalar().getValue()) {
         return true;
       }
       if (offerResource.getName().equals("mem") &&
-        (mem * hdfsFrameworkConfig.getJvmOverhead())
-          + (hdfsFrameworkConfig.getExecutorHeap() * hdfsFrameworkConfig.getJvmOverhead())
-          > offerResource.getScalar().getValue()) {
+          (mem * hdfsFrameworkConfig.getJvmOverhead())
+              + (hdfsFrameworkConfig.getExecutorHeap() * hdfsFrameworkConfig.getJvmOverhead())
+              > offerResource.getScalar().getValue()) {
         return true;
       }
     }
     return false;
   }
-  
+
   private void reconcile(SchedulerDriver driver) {
     liveState.transitionTo(AcquisitionPhase.RECONCILING_TASKS);
     reconciler.reconcile(driver);
   }
-  
+
 }

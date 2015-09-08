@@ -9,7 +9,6 @@ public final class NodeTypes {
   public static final String JOURNALNODES_KEY = "journalNodes";
   public static final String DATANODES_KEY = "dataNodes";
 
-
   public NodeTypes() {
   }
 }

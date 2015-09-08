@@ -39,7 +39,8 @@ public class ConfigServer {
   private IPersistentStateStore persistenceStore;
 
   @Inject
-  public ConfigServer(HdfsFrameworkConfig hdfsFrameworkConfig, IPersistentStateStore persistenceStore) {
+  public ConfigServer(HdfsFrameworkConfig hdfsFrameworkConfig,
+      IPersistentStateStore persistenceStore) {
     this.hdfsFrameworkConfig = hdfsFrameworkConfig;
     this.persistenceStore = persistenceStore;
     engine = new Engine();
@@ -48,7 +49,7 @@ public class ConfigServer {
     resourceHandler.setResourceBase(hdfsFrameworkConfig.getExecutorPath());
     HandlerList handlers = new HandlerList();
     handlers.setHandlers(new Handler[]{
-      resourceHandler, new ServeHdfsConfigHandler()});
+        resourceHandler, new ServeHdfsConfigHandler()});
     server.setHandler(handlers);
 
     try {

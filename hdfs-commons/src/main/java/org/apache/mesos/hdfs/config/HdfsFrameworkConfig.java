@@ -152,18 +152,18 @@ public class HdfsFrameworkConfig {
 
   public String getJvmOpts() {
     return getConf().get(
-      "mesos.hdfs.jvm.opts", ""
-        + "-XX:+UseConcMarkSweepGC "
-        + "-XX:+CMSClassUnloadingEnabled "
-        + "-XX:+UseTLAB "
-        + "-XX:+AggressiveOpts "
-        + "-XX:+UseCompressedOops "
-        + "-XX:+UseFastEmptyMethods "
-        + "-XX:+UseFastAccessorMethods "
-        + "-Xss256k "
-        + "-XX:+AlwaysPreTouch "
-        + "-XX:+UseParNewGC "
-        + "-Djava.library.path=/usr/lib:/usr/local/lib:lib/native");
+        "mesos.hdfs.jvm.opts", ""
+            + "-XX:+UseConcMarkSweepGC "
+            + "-XX:+CMSClassUnloadingEnabled "
+            + "-XX:+UseTLAB "
+            + "-XX:+AggressiveOpts "
+            + "-XX:+UseCompressedOops "
+            + "-XX:+UseFastEmptyMethods "
+            + "-XX:+UseFastAccessorMethods "
+            + "-Xss256k "
+            + "-XX:+AlwaysPreTouch "
+            + "-XX:+UseParNewGC "
+            + "-Djava.library.path=/usr/lib:/usr/local/lib:lib/native");
   }
 
   public double getExecutorCpus() {
@@ -290,7 +290,8 @@ public class HdfsFrameworkConfig {
   }
 
   public int getMaxReconciliationTimeout() {
-    return getConf().getInt("mesos.max-reconciliation.timeout.sec", DEFAULT_MAX_RECONCILIATION_TIMEOUT_SEC);
+    return getConf().getInt("mesos.max-reconciliation.timeout.sec",
+        DEFAULT_MAX_RECONCILIATION_TIMEOUT_SEC);
   }
 
   public int getDeadNodeTimeout() {
@@ -298,7 +299,8 @@ public class HdfsFrameworkConfig {
   }
 
   public String getJreUrl() {
-    return getConf().get("mesos.hdfs.jre-url", "https://downloads.mesosphere.io/java/jre-7u76-linux-x64.tar.gz");
+    return getConf().get("mesos.hdfs.jre-url",
+        "https://downloads.mesosphere.io/java/jre-7u76-linux-x64.tar.gz");
   }
 
   public String getLdLibraryPath() {

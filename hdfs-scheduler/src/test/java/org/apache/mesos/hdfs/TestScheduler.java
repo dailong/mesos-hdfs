@@ -33,7 +33,8 @@ import static org.mockito.Mockito.*;
 @SuppressWarnings("unchecked")
 public class TestScheduler {
 
-  private final HdfsFrameworkConfig hdfsFrameworkConfig = new HdfsFrameworkConfig(new Configuration());
+  private final HdfsFrameworkConfig hdfsFrameworkConfig = new HdfsFrameworkConfig(
+      new Configuration());
 
   @Mock
   SchedulerDriver driver;
@@ -65,14 +66,14 @@ public class TestScheduler {
 
   @Test
   public void statusUpdateTransitionFromAcquiringJournalNodesToStartingNameNodes() {
-    Protos.TaskID taskId = createTaskId("1");
-
     when(liveState.getCurrentAcquisitionPhase()).thenReturn(AcquisitionPhase.JOURNAL_NODES);
     when(liveState.getJournalNodeSize()).thenReturn(3);
 
+    Protos.TaskID nameTaskId = createTaskId(HDFSConstants.JOURNAL_NODE_ID+"1");
+    
     scheduler.statusUpdate(driver,
-        createTaskStatus(taskId, Protos.TaskState.TASK_RUNNING));
-
+        createTaskStatus(nameTaskId, Protos.TaskState.TASK_RUNNING));
+    
     verify(liveState).transitionTo(AcquisitionPhase.START_NAME_NODES);
   }
 

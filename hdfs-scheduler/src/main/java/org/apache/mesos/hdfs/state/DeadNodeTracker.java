@@ -16,7 +16,8 @@ import static org.apache.mesos.hdfs.util.NodeTypes.*;
 public class DeadNodeTracker {
 
   private Map<String, Timestamp> timestampMap;
-  private String[] nodes = {JOURNALNODES_KEY, NAMENODES_KEY, DATANODES_KEY};
+  private String[] nodes = {
+      JOURNALNODES_KEY, NAMENODES_KEY, DATANODES_KEY};
 
   private HdfsFrameworkConfig hdfsFrameworkConfig;
 
@@ -36,7 +37,6 @@ public class DeadNodeTracker {
     Date date = DateUtils.addSeconds(new Date(), hdfsFrameworkConfig.getDeadNodeTimeout());
     timestampMap.put(nodeType, new Timestamp(date.getTime()));
   }
-
 
   public void resetDeadNodeTimeStamps(int deadJournalNodes, int deadNameNodes, int deadDataNodes) {
     if (deadJournalNodes > 0) {

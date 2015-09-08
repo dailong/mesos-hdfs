@@ -23,27 +23,26 @@ public class HdfsZkStore implements IHdfsStore {
 
   private State state;
 
-
   public HdfsZkStore(HdfsFrameworkConfig hdfsFrameworkConfig) {
 
     this.state = new ZooKeeperState(hdfsFrameworkConfig.getStateZkServers(),
-      hdfsFrameworkConfig.getStateZkTimeout(),
-      TimeUnit.MILLISECONDS,
-      "/hdfs-mesos/" + hdfsFrameworkConfig.getFrameworkName());
+        hdfsFrameworkConfig.getStateZkTimeout(),
+        TimeUnit.MILLISECONDS,
+        "/hdfs-mesos/" + hdfsFrameworkConfig.getFrameworkName());
   }
-
 
   public byte[] getRawValueForId(String id) throws ExecutionException, InterruptedException {
     byte[] value = state.fetch(id).get().value();
     return value;
   }
 
-  public void setRawValueForId(String id, byte[] newRawValue) throws ExecutionException, InterruptedException {
+  public void setRawValueForId(String id, byte[] newRawValue) throws ExecutionException,
+      InterruptedException {
     Variable value = state.fetch(id).get();
-    if(newRawValue == null)
-        value = value.mutate(new byte[]{});
+    if (newRawValue == null)
+      value = value.mutate(new byte[]{});
     else
-        value = value.mutate(newRawValue);
+      value = value.mutate(newRawValue);
     state.store(value).get();
   }
 
@@ -58,7 +57,7 @@ public class HdfsZkStore implements IHdfsStore {
    */
   @SuppressWarnings("unchecked")
   public <T extends Object> T get(String key) throws InterruptedException, ExecutionException,
-    IOException, ClassNotFoundException {
+      IOException, ClassNotFoundException {
 
     byte[] existingNodes = state.fetch(key).get().value();
     if (existingNodes.length > 0) {
@@ -66,7 +65,8 @@ public class HdfsZkStore implements IHdfsStore {
       ObjectInputStream in = null;
       try {
         in = new ObjectInputStream(bis);
-        // generic in java lose their runtime information, there is no way to get this casted without
+        // generic in java lose their runtime information, there is no way to get this casted
+        // without
         // the need for the SuppressWarnings on the method.
         return (T) in.readObject();
       } finally {
@@ -86,7 +86,7 @@ public class HdfsZkStore implements IHdfsStore {
    * @throws IOException
    */
   public <T extends Object> void set(String key, T object) throws InterruptedException,
-    ExecutionException, IOException {
+      ExecutionException, IOException {
 
     Variable value = state.fetch(key).get();
     ByteArrayOutputStream bos = new ByteArrayOutputStream();

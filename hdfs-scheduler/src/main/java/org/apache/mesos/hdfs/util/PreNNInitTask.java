@@ -18,8 +18,9 @@ public class PreNNInitTask extends TimerTask {
   private final Protos.SlaveID slaveID;
   private final String message;
 
-  public PreNNInitTask(DnsResolver dnsResolver, HdfsScheduler scheduler, SchedulerDriver driver, Protos.TaskID taskId,
-    Protos.SlaveID slaveID, String message) {
+  public PreNNInitTask(DnsResolver dnsResolver, HdfsScheduler scheduler, SchedulerDriver driver,
+      Protos.TaskID taskId,
+      Protos.SlaveID slaveID, String message) {
     this.dnsResolver = dnsResolver;
     this.scheduler = scheduler;
     this.driver = driver;
